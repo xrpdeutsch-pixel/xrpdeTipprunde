@@ -1,5 +1,4 @@
-[07.06.2026 21:15] Louis: create policy "Own delete" on tips for delete using (auth.uid() = user_id);
-[07.06.2026 21:22] Louis: import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const SUPABASE_URL = "https://ymwaobletazkijmzbtiy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_91Tw0CgJSBUdiAEyCONg8w_kZVpOFq7";
@@ -58,7 +57,7 @@ const GROUP_MATCHES = [
   {id:"D1",phase:"Gruppe",group:"D",home:"USA",away:"Paraguay",date:"13.06.2026",time:"03:00"},
   {id:"D2",phase:"Gruppe",group:"D",home:"Australien",away:"Türkei",date:"14.06.2026",time:"06:00"},
   {id:"D3",phase:"Gruppe",group:"D",home:"USA",away:"Australien",date:"19.06.2026",time:"03:00"},
-[07.06.2026 21:22] Louis: {id:"D4",phase:"Gruppe",group:"D",home:"Türkei",away:"Paraguay",date:"19.06.2026",time:"21:00"},
+  {id:"D4",phase:"Gruppe",group:"D",home:"Türkei",away:"Paraguay",date:"19.06.2026",time:"21:00"},
   {id:"D5",phase:"Gruppe",group:"D",home:"USA",away:"Türkei",date:"26.06.2026",time:"02:00"},
   {id:"D6",phase:"Gruppe",group:"D",home:"Paraguay",away:"Australien",date:"26.06.2026",time:"02:00"},
   // GRUPPE E – DEUTSCHLAND 🇩🇪
@@ -104,7 +103,7 @@ const GROUP_MATCHES = [
   {id:"J5",phase:"Gruppe",group:"J",home:"Argentinien",away:"Jordanien",date:"28.06.2026",time:"02:00"},
   {id:"J6",phase:"Gruppe",group:"J",home:"Algerien",away:"Österreich",date:"28.06.2026",time:"02:00"},
   // GRUPPE K
-[07.06.2026 21:22] Louis: {id:"K1",phase:"Gruppe",group:"K",home:"Portugal",away:"DR Kongo",date:"17.06.2026",time:"21:00"},
+  {id:"K1",phase:"Gruppe",group:"K",home:"Portugal",away:"DR Kongo",date:"17.06.2026",time:"21:00"},
   {id:"K2",phase:"Gruppe",group:"K",home:"Usbekistan",away:"Kolumbien",date:"18.06.2026",time:"03:00"},
   {id:"K3",phase:"Gruppe",group:"K",home:"Portugal",away:"Usbekistan",date:"22.06.2026",time:"22:00"},
   {id:"K4",phase:"Gruppe",group:"K",home:"Kolumbien",away:"DR Kongo",date:"23.06.2026",time:"03:00"},
@@ -164,7 +163,7 @@ const SPECIAL_BETS=[
   {id:"sb_champion",label:"🏆 Weltmeister",desc:"Wer wird Weltmeister 2026?",points:5,deadline:"11.06.2026",dtime:"20:00"},
   {id:"sb_finalist1",label:"🥈 Finalist 1",desc:"Eines der beiden Finalteams",points:3,deadline:"11.06.2026",dtime:"20:00"},
   {id:"sb_finalist2",label:"🥈 Finalist 2",desc:"Das andere Finalteam",points:3,deadline:"11.06.2026",dtime:"20:00"},
-[07.06.2026 21:22] Louis: {id:"sb_sf1",label:"🏟️ Halbfinalist 1",desc:"Eines der vier Halbfinalteams",points:2,deadline:"11.06.2026",dtime:"20:00"},
+  {id:"sb_sf1",label:"🏟️ Halbfinalist 1",desc:"Eines der vier Halbfinalteams",points:2,deadline:"11.06.2026",dtime:"20:00"},
   {id:"sb_sf2",label:"🏟️ Halbfinalist 2",desc:"Eines der vier Halbfinalteams",points:2,deadline:"11.06.2026",dtime:"20:00"},
   {id:"sb_sf3",label:"🏟️ Halbfinalist 3",desc:"Eines der vier Halbfinalteams",points:2,deadline:"11.06.2026",dtime:"20:00"},
   {id:"sb_sf4",label:"🏟️ Halbfinalist 4",desc:"Eines der vier Halbfinalteams",points:2,deadline:"11.06.2026",dtime:"20:00"},
@@ -241,8 +240,7 @@ export default function App(){
     setLoading(true);
     try{
       const data=await sbAuth("signup",{email:`${username.replace(/\s/g,"_")}@xrp-wm.de`,password});
-      const token=data.
-[07.06.2026 21:22] Louis: access_token;
+      const token=data.access_token;
       await sb("profiles","POST",{id:data.user.id,username,bitvavo_uid:bitvavoUID},token);
       const sess={access_token:token,user:data.user};
       setSession(sess);localStorage.setItem("xrp_session",JSON.stringify(sess));
@@ -295,8 +293,7 @@ export default function App(){
         <div style={S.headerInner}>
           <div style={S.brand} onClick={()=>setPage("home")}>
             <svg width="40" height="40" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="47" stroke="white" strokeWidth="3.5"/><circle cx="50" cy="50" r="40" stroke="white" strokeWidth="1.5"/><path d="M18 20 L50 52 L82 20" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18 80 L50 48 L82 80" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <div><div style={S.
-[07.06.2026 21:22] Louis: brandName}>XRP Deutschland</div><div style={S.brandSub}>WM 2026 Tipprunde</div></div>
+            <div><div style={S.brandName}>XRP Deutschland</div><div style={S.brandSub}>WM 2026 Tipprunde</div></div>
           </div>
           <nav style={S.nav}>
             {[["home","🏠"],["tips","⚽ Tippen"],["special","🌟 Sondertipps"],["leaderboard","🏆 Rangliste"]].map(([p,label])=>(
@@ -353,8 +350,7 @@ function HomePage({setPage,session}){
           ))}
         </div>
       </div>
-      {session?(<div style={S.ctaRow}><button style={S.
-[07.06.2026 21:22] Louis: ctaGreen} onClick={()=>setPage("tips")}>Zu meinen Tipps →</button><button style={S.ctaGhost} onClick={()=>setPage("special")}>🌟 Sondertipps</button></div>):(
+      {session?(<div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("tips")}>Zu meinen Tipps →</button><button style={S.ctaGhost} onClick={()=>setPage("special")}>🌟 Sondertipps</button></div>):(
         <div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("register")}>Jetzt mitmachen →</button><button style={S.ctaGhost} onClick={()=>setPage("login")}>Bereits registriert</button></div>
       )}
     </div>
@@ -406,8 +402,7 @@ function TipsPage({session,profile,tips,results,saveTip,saveResult,setPage}){
     <div style={S.tipsTop}>
       <h2 style={S.tipsH2}>Deine Tipps{profile?`, ${profile.username}`:""} 👋</h2>
       <p style={S.tipsHint}>✅ {tipCount} Tipps abgegeben · Automatisch gespeichert · Sperre bei Anpfiff (MESZ)</p>
-      {profile?.is_admin&&<div style={S.
-[07.06.2026 21:22] Louis: adminBadge}>🔐 Admin-Modus – Ergebnisse eintragen</div>}
+      {profile?.is_admin&&<div style={S.adminBadge}>🔐 Admin-Modus – Ergebnisse eintragen</div>}
     </div>
     <div style={S.tabs}>{phases.map(ph=>(<button key={ph} style={{...S.tab,...(activePhase===ph?S.tabOn:{})}} onClick={()=>setActivePhase(ph)}>{ph}</button>))}</div>
     {activePhase==="Gruppe"&&(
@@ -467,8 +462,7 @@ function MatchCard({match,tip,result,onTip,onResult,isAdmin}){
       <span style={S.mDate}>{match.date} · {match.time} Uhr</span>
       {match.group&&<span style={S.mGroup}>Gr. {match.group}</span>}
       {match.phase!=="Gruppe"&&<span style={S.mPhase}>{match.phase}</span>}
-      {pts!==null&&<span style={{...S.
-[07.06.2026 21:22] Louis: ptsPill,...ptsStyle}}>{pts===3?"✓ 3 Pkt":pts===1?"≈ 1 Pkt":"✗ 0 Pkt"}</span>}
+      {pts!==null&&<span style={{...S.ptsPill,...ptsStyle}}>{pts===3?"✓ 3 Pkt":pts===1?"≈ 1 Pkt":"✗ 0 Pkt"}</span>}
       {!locked&&h!==""&&a!==""&&<span style={{fontSize:10,color:"#00d084",marginLeft:"auto"}}>✓</span>}
     </div>
     <div style={S.mRow}>
@@ -526,7 +520,7 @@ function Field({label,value,onChange,type="text",placeholder="",onKeyDown}){
 }
 
 const S={
-[07.06.2026 21:22] Louis: root:{minHeight:"100vh",background:"#04080f",color:"#dde5f0",fontFamily:"'Barlow',sans-serif",position:"relative",overflowX:"hidden"},
+  root:{minHeight:"100vh",background:"#04080f",color:"#dde5f0",fontFamily:"'Barlow',sans-serif",position:"relative",overflowX:"hidden"},
   bgGlow1:{position:"fixed",top:"-20%",left:"-10%",width:"60vw",height:"60vw",borderRadius:"50%",background:"radial-gradient(circle,rgba(0,80,40,.18) 0%,transparent 70%)",pointerEvents:"none",zIndex:0},
   bgGlow2:{position:"fixed",bottom:"-20%",right:"-10%",width:"50vw",height:"50vw",borderRadius:"50%",background:"radial-gradient(circle,rgba(0,40,120,.15) 0%,transparent 70%)",pointerEvents:"none",zIndex:0},
   bgGrid:{position:"fixed",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)",backgroundSize:"60px 60px",pointerEvents:"none",zIndex:0},
@@ -558,7 +552,7 @@ const S={
   pointsHead:{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:"#fff",marginBottom:18},
   pointsRow:{display:"flex",gap:12,flexWrap:"wrap"},
   pointItem:{flex:1,minWidth:120,background:"rgba(255,255,255,.04)",borderRadius:12,padding:"18px 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:4},
-[07.06.2026 21:22] Louis: pointNum:{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,lineHeight:1},
+  pointNum:{fontFamily:"'Bebas Neue',sans-serif",fontSize:44,lineHeight:1},
   pointLabel:{fontSize:11,color:"#7a8fa8",fontWeight:700,letterSpacing:1,textTransform:"uppercase"},
   pointDesc:{fontSize:13,color:"#aab8cc",textAlign:"center"},
   ctaGreen:{padding:"15px 36px",background:"#00d084",color:"#000",border:"none",borderRadius:10,fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:"'Barlow',sans-serif"},
@@ -598,7 +592,7 @@ const S={
   mTeamName:{fontSize:14,fontWeight:700,color:"#e0e8f4"},
   mScore:{display:"flex",alignItems:"center",gap:8,flexShrink:0},
   scoreIn:{width:52,padding:"8px 4px",textAlign:"center",background:"rgba(0,208,132,.08)",border:"1px solid rgba(0,208,132,.25)",borderRadius:7,color:"#fff",fontSize:22,fontWeight:900,fontFamily:"'Bebas Neue',sans-serif",outline:"none"},
-[07.06.2026 21:22] Louis: scoreSep:{fontSize:22,fontWeight:900,color:"#5a6a7a",fontFamily:"'Bebas Neue',sans-serif"},
+  scoreSep:{fontSize:22,fontWeight:900,color:"#5a6a7a",fontFamily:"'Bebas Neue',sans-serif"},
   mBottom:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"},
   resultPill:{fontSize:12,padding:"3px 12px",background:"rgba(255,255,255,.06)",borderRadius:99,color:"#aab8cc"},
   adminRow:{display:"flex",alignItems:"center",gap:6},
