@@ -183,6 +183,23 @@ const isMatchLocked=(date,time)=>{
   return new Date()>=new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
 };
 
+// ── Gruppentabelle wird live aus den eingetragenen Ergebnissen berechnet ──────
+const computeStandings=(group,results)=>{
+  const table={};
+  GROUPS[group].forEach(t=>{table[t]={team:t,sp:0,s:0,u:0,n:0,tore:0,gegentore:0,diff:0,pkt:0};});
+  GROUP_MATCHES.filter(m=>m.group===group).forEach(m=>{
+    const r=results[m.id];
+    if(!r||r.home===""||r.away===""||r.home==null||r.away==null)return;
+    const hs=Number(r.home),as=Number(r.away);
+    const H=table[m.home],A=table[m.away];
+    H.sp++;A.sp++;H.tore+=hs;H.gegentore+=as;A.tore+=as;A.gegentore+=hs;
+    if(hs>as){H.s++;H.pkt+=3;A.n++;}
+    else if(as>hs){A.s++;A.pkt+=3;H.n++;}
+    else{H.u++;A.u++;H.pkt++;A.pkt++;}
+  });
+  return Object.values(table).map(t=>({...t,diff:t.tore-t.gegentore})).sort((a,b)=>b.pkt-a.pkt||b.diff-a.diff||b.tore-a.tore);
+};
+
 export default function App(){
   const[page,setPage]=useState("home");
   const[session,setSession]=useState(null);
@@ -264,6 +281,8 @@ export default function App(){
 
   const saveTip=async(matchId,home,away)=>{
     if(!session||home===""||away==="")return;
+    const match=ALL_MATCHES.find(m=>m.id===matchId);
+    if(match&&(match.locked||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),updated_at:new Date().toISOString()};
     try{
       await fetch(`${SUPABASE_URL}/rest/v1/tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
@@ -405,10 +424,43 @@ function TipsPage({session,profile,tips,results,saveTip,saveResult,setPage}){
       {profile?.is_admin&&<div style={S.adminBadge}>🔐 Admin-Modus – Ergebnisse eintragen</div>}
     </div>
     <div style={S.tabs}>{phases.map(ph=>(<button key={ph} style={{...S.tab,...(activePhase===ph?S.tabOn:{})}} onClick={()=>setActivePhase(ph)}>{ph}</button>))}</div>
-    {activePhase==="Gruppe"&&(
+    {activePhase==="Gruppe"&&(<>
       <div style={S.groupRow}>{Object.keys(GROUPS).map(g=>(<button key={g} style={{...S.groupBtn,...(activeGroup===g?S.groupBtnOn:{})}} onClick={()=>setActiveGroup(g)}>{g}{g==="E"?" 🇩🇪":""}</button>))}</div>
+      <GroupTable group={activeGroup} results={results}/>
+    </>)}
+    {activePhase!=="Gruppe"&&phaseMatches.every(m=>m.locked)&&(
+      <div style={S.koHint}>🔒 Diese Runde ist noch gesperrt – die Paarungen stehen erst nach Abschluss der Vorrunde fest und werden dann von der Turnierleitung eingetragen.</div>
     )}
     <div style={S.matchGrid}>{phaseMatches.map(m=>(<MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} onTip={(h,a)=>saveTip(m.id,h,a)} onResult={(h,a)=>saveResult(m.id,h,a)} isAdmin={profile?.is_admin}/>))}</div>
+  </div>);
+}
+
+function GroupTable({group,results}){
+  const table=computeStandings(group,results);
+  const played=table.some(t=>t.sp>0);
+  return(<div style={S.tableCard}>
+    <div style={S.tableHead}>📊 Tabelle Gruppe {group}{group==="E"?" 🇩🇪":""} <span style={S.tableHint}>– wird automatisch nach jedem eingetragenen Ergebnis aktualisiert</span></div>
+    {!played?(
+      <div style={{padding:"16px 4px",color:"#7a8fa8",fontSize:13}}>Noch keine Ergebnisse eingetragen – die Tabelle füllt sich automatisch, sobald die ersten Spiele ausgewertet sind.</div>
+    ):(
+      <div style={S.tableWrap}>
+        <div style={{...S.tableRow,...S.tableRowHead}}>
+          <span style={S.tablePos}>#</span><span style={{flex:1}}>Team</span>
+          <span style={S.tableCol}>Sp</span><span style={S.tableCol}>S</span><span style={S.tableCol}>U</span><span style={S.tableCol}>N</span>
+          <span style={S.tableCol}>Tore</span><span style={S.tableCol}>Diff</span><span style={S.tableColPts}>Pkt</span>
+        </div>
+        {table.map((t,i)=>(
+          <div key={t.team} style={{...S.tableRow,...(i<2?S.tableRowQ:{})}}>
+            <span style={S.tablePos}>{i+1}.</span>
+            <span style={{flex:1,display:"flex",alignItems:"center",gap:8,fontWeight:700}}><span>{FLAG[t.team]}</span>{t.team}</span>
+            <span style={S.tableCol}>{t.sp}</span><span style={S.tableCol}>{t.s}</span><span style={S.tableCol}>{t.u}</span><span style={S.tableCol}>{t.n}</span>
+            <span style={S.tableCol}>{t.tore}:{t.gegentore}</span><span style={S.tableCol}>{t.diff>0?`+${t.diff}`:t.diff}</span>
+            <span style={S.tableColPts}>{t.pkt}</span>
+          </div>
+        ))}
+        <div style={S.tableLegend}><span style={S.tableLegendDot}/> Plätze 1–2 qualifizieren sich direkt für die K.O.-Runde (+ die 8 besten Gruppendritten)</div>
+      </div>
+    )}
   </div>);
 }
 
@@ -577,6 +629,19 @@ const S={
   tab:{padding:"8px 14px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,color:"#8a9ab0",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Barlow',sans-serif"},
   tabOn:{background:"rgba(0,208,132,.12)",borderColor:"rgba(0,208,132,.35)",color:"#00d084"},
   groupRow:{display:"flex",gap:6,flexWrap:"wrap"},
+  koHint:{padding:"14px 18px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,fontSize:13,color:"#7a8fa8",lineHeight:1.6},
+  tableCard:{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px 18px",display:"flex",flexDirection:"column",gap:8},
+  tableHead:{fontSize:14,fontWeight:800,color:"#fff",letterSpacing:.5},
+  tableHint:{fontSize:11,fontWeight:500,color:"#5a6a7a"},
+  tableWrap:{display:"flex",flexDirection:"column",gap:4},
+  tableRow:{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",borderRadius:8,fontSize:13},
+  tableRowHead:{color:"#5a6a7a",fontSize:11,letterSpacing:1,textTransform:"uppercase",fontWeight:700},
+  tableRowQ:{background:"rgba(0,208,132,.06)",border:"1px solid rgba(0,208,132,.18)"},
+  tablePos:{width:24,color:"#8a9ab0"},
+  tableCol:{width:46,textAlign:"center",color:"#aab8cc"},
+  tableColPts:{width:40,textAlign:"center",fontWeight:900,color:"#00d084",fontSize:15},
+  tableLegend:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#5a6a7a",marginTop:4},
+  tableLegendDot:{width:10,height:10,borderRadius:3,background:"rgba(0,208,132,.35)",border:"1px solid rgba(0,208,132,.5)",display:"inline-block"},
   groupBtn:{padding:"6px 12px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:6,color:"#8a9ab0",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:"'Barlow',sans-serif"},
   groupBtnOn:{background:"rgba(100,180,255,.12)",borderColor:"rgba(100,180,255,.35)",color:"#6ab4ff"},
   matchGrid:{display:"flex",flexDirection:"column",gap:10},
