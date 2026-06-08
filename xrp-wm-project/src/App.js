@@ -9,6 +9,10 @@ const sb = async (path, method = "GET", body = null, token = null) => {
   if(!res.ok){const err=await res.text();throw new Error(err);}
   const text=await res.text();return text?JSON.parse(text):null;
 };
+const sbUpsert = async (path, body, token) => {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+  if(!res.ok){const err=await res.text();throw new Error(err);}
+};
 const sbAuth = async (endpoint, payload) => {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},body:JSON.stringify(payload)});
   const data=await res.json();if(!res.ok)throw new Error(data.error_description||data.msg||"Auth error");return data;
@@ -297,9 +301,9 @@ export default function App(){
     if(tips[matchId]?.submitted){notify("⛔ Tipp ist bereits abgeschickt und gesperrt!","err");return;}
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:false,updated_at:new Date().toISOString()};
     try{
-      await fetch(`${SUPABASE_URL}/rest/v1/tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      await sbUpsert("tips",body,session.access_token);
       setTips(t=>({...t,[matchId]:{home:parseInt(home),away:parseInt(away),submitted:false}}));
-    }catch(e){console.error(e);}
+    }catch(e){console.error(e);notify("⚠️ Tipp konnte nicht gespeichert werden – bitte erneut versuchen!","err");}
   };
 
   const submitTip=async(matchId,home,away)=>{
@@ -309,10 +313,10 @@ export default function App(){
     if(tips[matchId]?.submitted)return;
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:true,updated_at:new Date().toISOString()};
     try{
-      await fetch(`${SUPABASE_URL}/rest/v1/tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      await sbUpsert("tips",body,session.access_token);
       setTips(t=>({...t,[matchId]:{home:parseInt(home),away:parseInt(away),submitted:true}}));
       notify("🔒 Tipp abgeschickt & gesperrt – kann nicht mehr geändert werden!");
-    }catch(e){notify("Fehler beim Abschicken!","err");}
+    }catch(e){console.error(e);notify("⚠️ Abschicken fehlgeschlagen – Tipp wurde NICHT gesperrt. Bitte Seite neu laden und erneut versuchen!","err");}
   };
 
   const saveSpecialTip=async(betId,value)=>{
@@ -321,9 +325,9 @@ export default function App(){
     if(specialTips[betId]?.submitted){notify("⛔ Sondertipp ist bereits abgeschickt und gesperrt!","err");return;}
     const body={user_id:session.user.id,bet_id:betId,value,submitted:false,updated_at:new Date().toISOString()};
     try{
-      await fetch(`${SUPABASE_URL}/rest/v1/special_tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      await sbUpsert("special_tips",body,session.access_token);
       setSpecialTips(t=>({...t,[betId]:{value,submitted:false}}));
-    }catch(e){console.error(e);}
+    }catch(e){console.error(e);notify("⚠️ Sondertipp konnte nicht gespeichert werden – bitte erneut versuchen!","err");}
   };
 
   const submitSpecialTip=async(betId,value)=>{
@@ -332,10 +336,10 @@ export default function App(){
     if(specialTips[betId]?.submitted)return;
     const body={user_id:session.user.id,bet_id:betId,value,submitted:true,updated_at:new Date().toISOString()};
     try{
-      await fetch(`${SUPABASE_URL}/rest/v1/special_tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      await sbUpsert("special_tips",body,session.access_token);
       setSpecialTips(t=>({...t,[betId]:{value,submitted:true}}));
       notify("🔒 Sondertipp abgeschickt & gesperrt!");
-    }catch(e){notify("Fehler beim Abschicken!","err");}
+    }catch(e){console.error(e);notify("⚠️ Abschicken fehlgeschlagen – Sondertipp wurde NICHT gesperrt. Bitte Seite neu laden und erneut versuchen!","err");}
   };
 
   const saveResult=async(matchId,home,away)=>{
