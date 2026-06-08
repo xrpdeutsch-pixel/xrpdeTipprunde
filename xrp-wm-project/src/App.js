@@ -220,9 +220,11 @@ export default function App(){
   const loadTips=useCallback(async(token)=>{
     try{
       let uid;try{uid=JSON.parse(atob(token.split(".")[1])).sub;}catch{}
-      const query=uid?`tips?user_id=eq.${uid}&select=match_id,home_score,away_score`:"tips?select=match_id,home_score,away_score";
-      const rows=await sb(query,"GET",null,token);
-      const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home_score,away:r.away_score};});
+      const q=sel=>uid?`tips?user_id=eq.${uid}&select=${sel}`:`tips?select=${sel}`;
+      let rows;
+      try{rows=await sb(q("match_id,home_score,away_score,submitted"),"GET",null,token);}
+      catch{rows=await sb(q("match_id,home_score,away_score"),"GET",null,token);}
+      const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home_score,away:r.away_score,submitted:!!r.submitted};});
       setTips(map);
       const stored=localStorage.getItem("xrp_special_tips");if(stored)setSpecialTips(JSON.parse(stored));
     }catch(e){console.error(e);}
@@ -283,11 +285,25 @@ export default function App(){
     if(!session||home===""||away==="")return;
     const match=ALL_MATCHES.find(m=>m.id===matchId);
     if(match&&(match.locked||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
-    const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),updated_at:new Date().toISOString()};
+    if(tips[matchId]?.submitted){notify("⛔ Tipp ist bereits abgeschickt und gesperrt!","err");return;}
+    const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:false,updated_at:new Date().toISOString()};
     try{
       await fetch(`${SUPABASE_URL}/rest/v1/tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
-      setTips(t=>({...t,[matchId]:{home:parseInt(home),away:parseInt(away)}}));
+      setTips(t=>({...t,[matchId]:{home:parseInt(home),away:parseInt(away),submitted:false}}));
     }catch(e){console.error(e);}
+  };
+
+  const submitTip=async(matchId,home,away)=>{
+    if(!session||home===""||away==="")return;
+    const match=ALL_MATCHES.find(m=>m.id===matchId);
+    if(match&&(match.locked||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
+    if(tips[matchId]?.submitted)return;
+    const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:true,updated_at:new Date().toISOString()};
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      setTips(t=>({...t,[matchId]:{home:parseInt(home),away:parseInt(away),submitted:true}}));
+      notify("🔒 Tipp abgeschickt & gesperrt – kann nicht mehr geändert werden!");
+    }catch(e){notify("Fehler beim Abschicken!","err");}
   };
 
   const saveSpecialTip=(betId,value)=>{
@@ -330,7 +346,7 @@ export default function App(){
         {page==="home"&&<HomePage setPage={setPage} session={session}/>}
         {page==="register"&&<RegisterPage onRegister={handleRegister} setPage={setPage} loading={loading}/>}
         {page==="login"&&<LoginPage onLogin={handleLogin} setPage={setPage} loading={loading}/>}
-        {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} saveTip={saveTip} saveResult={saveResult} setPage={setPage}/>}
+        {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} saveTip={saveTip} submitTip={submitTip} saveResult={saveResult} setPage={setPage}/>}
         {page==="special"&&<SpecialBetsPage session={session} specialTips={specialTips} saveSpecialTip={saveSpecialTip} setPage={setPage}/>}
         {page==="leaderboard"&&<LeaderboardPage leaderboard={leaderboard} profile={profile} onRefresh={loadLeaderboard}/>}
       </main>
@@ -405,7 +421,7 @@ function LoginPage({onLogin,setPage,loading}){
   </div></div>);
 }
 
-function TipsPage({session,profile,tips,results,saveTip,saveResult,setPage}){
+function TipsPage({session,profile,tips,results,saveTip,submitTip,saveResult,setPage}){
   const[activePhase,setActivePhase]=useState("Gruppe");
   const[activeGroup,setActiveGroup]=useState("A");
   const phases=["Gruppe","Sechzehntelfinale","Achtelfinale","Viertelfinale","Halbfinale","Spiel um Platz 3","Finale"];
@@ -433,7 +449,7 @@ function TipsPage({session,profile,tips,results,saveTip,saveResult,setPage}){
     {activePhase!=="Gruppe"&&phaseMatches.every(m=>m.locked)&&(
       <div style={S.koHint}>🔒 Diese Runde ist noch gesperrt – die Paarungen stehen erst nach Abschluss der Vorrunde fest und werden dann von der Turnierleitung eingetragen.</div>
     )}
-    <div style={S.matchGrid}>{phaseMatches.map(m=>(<MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} onTip={(h,a)=>saveTip(m.id,h,a)} onResult={(h,a)=>saveResult(m.id,h,a)} isAdmin={profile?.is_admin}/>))}</div>
+    <div style={S.matchGrid}>{phaseMatches.map(m=>(<MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} onTip={(h,a)=>saveTip(m.id,h,a)} onSubmit={(h,a)=>submitTip(m.id,h,a)} onResult={(h,a)=>saveResult(m.id,h,a)} isAdmin={profile?.is_admin}/>))}</div>
   </div>);
 }
 
@@ -503,13 +519,16 @@ function SpecialBetsPage({session,specialTips,saveSpecialTip,setPage}){
   </div>);
 }
 
-function MatchCard({match,tip,result,onTip,onResult,isAdmin}){
+function MatchCard({match,tip,result,onTip,onSubmit,onResult,isAdmin}){
   const[h,setH]=useState(tip?.home??"");const[a,setA]=useState(tip?.away??"");
   const[rh,setRh]=useState(result?.home??"");const[ra,setRa]=useState(result?.away??"");
   useEffect(()=>{setH(tip?.home??"");setA(tip?.away??"");},[tip]);
   useEffect(()=>{setRh(result?.home??"");setRa(result?.away??"");},[result]);
   const pts=(result&&tip&&h!==""&&a!=="")?calcPoints(tip,result):null;
-  const locked=match.locked||(!isAdmin&&isMatchLocked(match.date,match.time));
+  const timeLocked=match.locked||(!isAdmin&&isMatchLocked(match.date,match.time));
+  const submitted=!!tip?.submitted;
+  const locked=timeLocked||submitted;
+  const canSubmit=!timeLocked&&!submitted&&h!==""&&a!=="";
   const ptsStyle=pts===3?{background:"rgba(0,208,132,.2)",color:"#00d084",border:"1px solid rgba(0,208,132,.4)"}:pts===1?{background:"rgba(240,192,64,.2)",color:"#f0c040",border:"1px solid rgba(240,192,64,.4)"}:pts===0?{background:"rgba(255,80,80,.15)",color:"#ff6b6b",border:"1px solid rgba(255,80,80,.3)"}:{};
   return(<div style={S.mCard}>
     <div style={S.mMeta}>
@@ -517,19 +536,30 @@ function MatchCard({match,tip,result,onTip,onResult,isAdmin}){
       {match.group&&<span style={S.mGroup}>Gr. {match.group}</span>}
       {match.phase!=="Gruppe"&&<span style={S.mPhase}>{match.phase}</span>}
       {pts!==null&&<span style={{...S.ptsPill,...ptsStyle}}>{pts===3?"✓ 3 Pkt":pts===1?"≈ 1 Pkt":"✗ 0 Pkt"}</span>}
+      {submitted&&pts===null&&<span style={{...S.ptsPill,background:"rgba(0,208,132,.15)",color:"#00d084",border:"1px solid rgba(0,208,132,.35)"}}>🔒 Abgeschickt</span>}
       {!locked&&h!==""&&a!==""&&<span style={{fontSize:10,color:"#00d084",marginLeft:"auto"}}>✓</span>}
     </div>
     <div style={S.mRow}>
       <div style={S.mTeam}><span style={S.mFlag}>{FLAG[match.home]||"🏳️"}</span><span style={S.mTeamName}>{match.home}</span></div>
       <div style={S.mScore}>
         {locked?(
-          <span style={{fontSize:12,color:match.locked?"#3a4a5a":"#ff6b6b",fontStyle:"italic",padding:"0 8px"}}>{match.locked?"TBD":"🔒 Gesperrt"}</span>
+          submitted?(
+            <span style={{fontSize:22,fontWeight:900,fontFamily:"'Bebas Neue',sans-serif",color:"#00d084"}}>{h} : {a}</span>
+          ):(
+            <span style={{fontSize:12,color:match.locked?"#3a4a5a":"#ff6b6b",fontStyle:"italic",padding:"0 8px"}}>{match.locked?"TBD":"🔒 Gesperrt"}</span>
+          )
         ):(
           <><input style={S.scoreIn} type="number" min="0" max="30" value={h} placeholder="–" onChange={e=>{setH(e.target.value);onTip(e.target.value,a);}}/><span style={S.scoreSep}>:</span><input style={S.scoreIn} type="number" min="0" max="30" value={a} placeholder="–" onChange={e=>{setA(e.target.value);onTip(h,e.target.value);}}/></>
         )}
       </div>
       <div style={{...S.mTeam,justifyContent:"flex-end"}}><span style={S.mTeamName}>{match.away}</span><span style={S.mFlag}>{FLAG[match.away]||"🏳️"}</span></div>
     </div>
+    {!timeLocked&&!submitted&&(
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button style={{...S.submitTipBtn,...(canSubmit?{}:S.submitTipBtnOff)}} disabled={!canSubmit} onClick={()=>onSubmit(h,a)}>🔒 Tipp abschicken &amp; sperren</button>
+      </div>
+    )}
+    {submitted&&!result&&<div style={{fontSize:12,color:"#00d084"}}>🔒 Abgeschickt – dein Tipp ist final gespeichert und kann nicht mehr geändert werden.</div>}
     <div style={S.mBottom}>
       {result&&<span style={S.resultPill}>Ergebnis: {result.home}:{result.away}</span>}
       {isAdmin&&!match.locked&&(<div style={S.adminRow}>
@@ -663,6 +693,8 @@ const S={
   scoreSep:{fontSize:22,fontWeight:900,color:"#5a6a7a",fontFamily:"'Bebas Neue',sans-serif"},
   mBottom:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"},
   resultPill:{fontSize:12,padding:"3px 12px",background:"rgba(255,255,255,.06)",borderRadius:99,color:"#aab8cc"},
+  submitTipBtn:{padding:"7px 16px",background:"#00d084",color:"#000",border:"none",borderRadius:7,cursor:"pointer",fontWeight:800,fontSize:12,fontFamily:"'Barlow',sans-serif"},
+  submitTipBtnOff:{background:"rgba(255,255,255,.06)",color:"#5a6a7a",cursor:"not-allowed"},
   adminRow:{display:"flex",alignItems:"center",gap:6},
   adminLabel:{fontSize:11,color:"#f0c040",fontWeight:700},
   scoreInSm:{width:42,padding:"5px 4px",textAlign:"center",background:"rgba(240,192,64,.1)",border:"1px solid rgba(240,192,64,.25)",borderRadius:5,color:"#fff",fontSize:16,fontWeight:700,outline:"none"},
