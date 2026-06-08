@@ -377,16 +377,18 @@ function HomePage({setPage,session}){
 }
 
 function RegisterPage({onRegister,setPage,loading}){
-  const[u,setU]=useState("");const[p,setP]=useState("");const[p2,setP2]=useState("");const[bv,setBv]=useState("");const[err,setErr]=useState("");
-  const go=()=>{setErr("");if(!u.trim())return setErr("Benutzername ist Pflicht.");if(p.length<6)return setErr("Passwort mind. 6 Zeichen.");if(p!==p2)return setErr("Passwörter stimmen nicht überein.");if(!bv.trim())return setErr("Bitvavo UID ist Pflicht!");onRegister(u.trim(),p,bv.trim());};
+  const[u,setU]=useState("");const[p,setP]=useState("");const[p2,setP2]=useState("");const[err,setErr]=useState("");
+  const go=()=>{setErr("");if(!u.trim())return setErr("Benutzername ist Pflicht.");if(p.length<6)return setErr("Passwort mind. 6 Zeichen.");if(p!==p2)return setErr("Passwörter stimmen nicht überein.");onRegister(u.trim(),p,"");};
   return(<div style={S.authWrap}><div style={S.authCard}>
     <h2 style={S.authTitle}>Registrieren</h2><p style={S.authSub}>Erstelle deinen Account für die XRP WM Tipprunde</p>
     {err&&<div style={S.errBox}>{err}</div>}
     <Field label="Benutzername" value={u} onChange={setU} placeholder="Dein Tipp-Name (keine Leerzeichen)"/>
     <Field label="Passwort" value={p} onChange={setP} type="password" placeholder="Mind. 6 Zeichen"/>
     <Field label="Passwort wiederholen" value={p2} onChange={setP2} type="password" placeholder="Passwort bestätigen"/>
-    <div><Field label="Bitvavo UID *Pflicht" value={bv} onChange={setBv} placeholder="Deine Bitvavo Benutzer-ID"/>
-    <a href="https://bitvavo.com/de/affiliate/xrpbros?a=8C3C4335B9" target="_blank" rel="noreferrer" style={{fontSize:12,color:"#00d084",display:"block",marginTop:4}}>→ Noch kein Account? 20€ XRP Bonus sichern</a></div>
+    <div style={S.bvNote}>
+      <strong>Hinweis:</strong> Für die Teilnahme an der Gewinnausschüttung benötigst du einen Bitvavo-Account.
+      <a href="https://bitvavo.com/de/affiliate/xrpbros?a=8C3C4335B9" target="_blank" rel="noreferrer" style={{fontSize:12,color:"#00d084",display:"block",marginTop:4}}>→ Noch kein Account? 20€ XRP Bonus sichern</a>
+    </div>
     <button style={S.submitBtn} onClick={go} disabled={loading}>{loading?"Wird erstellt…":"Account erstellen →"}</button>
     <p style={S.switchTxt}>Bereits registriert? <span style={S.switchLink} onClick={()=>setPage("login")}>Anmelden</span></p>
   </div></div>);
@@ -620,6 +622,7 @@ const S={
   switchTxt:{fontSize:13,color:"#7a8fa8",textAlign:"center"},
   switchLink:{color:"#00d084",cursor:"pointer"},
   errBox:{padding:"10px 14px",background:"rgba(192,57,43,.2)",border:"1px solid rgba(192,57,43,.35)",borderRadius:8,fontSize:13,color:"#ff8080"},
+  bvNote:{padding:"12px 16px",background:"rgba(0,208,132,.06)",border:"1px solid rgba(0,208,132,.2)",borderRadius:8,fontSize:13,color:"#aab8cc",lineHeight:1.6},
   tipsWrap:{display:"flex",flexDirection:"column",gap:20},
   tipsTop:{display:"flex",flexDirection:"column",gap:4},
   tipsH2:{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:3,color:"#fff"},
