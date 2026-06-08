@@ -180,7 +180,7 @@ const calcPoints=(tip,result)=>{
 const isMatchLocked=(date,time)=>{
   const[day,month,year]=date.split(".");
   const[hour,minute]=time.split(":");
-  return new Date()>=new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
+  return new Date()>=new Date(`${year}-${month}-${day}T${hour}:${minute}:00+02:00`);
 };
 
 // ── Gruppentabelle wird live aus den eingetragenen Ergebnissen berechnet ──────
