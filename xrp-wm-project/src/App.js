@@ -248,7 +248,8 @@ export default function App(){
 
   const loadLeaderboard=useCallback(async()=>{
     try{
-      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sb("profiles?select=id,username"),sb("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),sb("special_tips?select=user_id,bet_id,value"),sb("special_results?select=bet_id,value")]);
+      const safe=p=>p.catch(e=>{console.error(e);return[];});
+      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sb("profiles?select=id,username"),sb("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),safe(sb("special_tips?select=user_id,bet_id,value")),safe(sb("special_results?select=bet_id,value"))]);
       const resMap={};(allResults||[]).forEach(r=>{resMap[r.match_id]={home:r.home_score,away:r.away_score};});
       const sResMap={};(allSpecialResults||[]).forEach(r=>{sResMap[r.bet_id]=r.value;});
       const lb=(profiles||[]).map(p=>{
