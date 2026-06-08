@@ -225,9 +225,7 @@ export default function App(){
     try{
       let uid;try{uid=JSON.parse(atob(token.split(".")[1])).sub;}catch{}
       const q=sel=>uid?`tips?user_id=eq.${uid}&select=${sel}`:`tips?select=${sel}`;
-      let rows;
-      try{rows=await sb(q("match_id,home_score,away_score,submitted"),"GET",null,token);}
-      catch{rows=await sb(q("match_id,home_score,away_score"),"GET",null,token);}
+      const rows=await sb(q("match_id,home_score,away_score,submitted"),"GET",null,token);
       const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home_score,away:r.away_score,submitted:!!r.submitted};});
       setTips(map);
     }catch(e){console.error(e);}
