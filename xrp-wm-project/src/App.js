@@ -524,7 +524,7 @@ function SpecialBetsPage({session,specialTips,saveSpecialTip,submitSpecialTip,se
     <div style={S.tipsTop}>
       <h2 style={S.tipsH2}>🌟 Sondertipps</h2>
       <p style={S.tipsHint}>Deadline: vor dem Eröffnungsspiel · 11.06.2026 · 21:00 Uhr MESZ</p>
-      {allLocked&&<div style={{...S.adminBadge,background:"rgba(255,80,80,.15)",borderColor:"rgba(255,80,80,.3)",color:"#ff8080"}}>🔒 Gesperrt – Turnier hat begonnen</div>}
+      {allLocked&&<div style={{...S.adminBadge,background:"rgba(255,80,80,.15)",border:"1px solid rgba(255,80,80,.3)",color:"#ff8080"}}>🔒 Gesperrt – Turnier hat begonnen</div>}
     </div>
     <div style={S.matchGrid}>{SPECIAL_BETS.map(bet=>{
       const entry=specialTips[bet.id];
@@ -655,8 +655,8 @@ const S={
   brandSub:{fontSize:10,color:"#00d084",letterSpacing:3,fontWeight:700,textTransform:"uppercase"},
   nav:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"},
   navBtn:{padding:"7px 12px",background:"transparent",border:"1px solid rgba(255,255,255,.12)",borderRadius:6,color:"#8a9ab0",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Barlow',sans-serif"},
-  navBtnOn:{color:"#fff",borderColor:"rgba(255,255,255,.35)",background:"rgba(255,255,255,.05)"},
-  navBtnGreen:{background:"#00d084",color:"#000",borderColor:"#00d084",fontWeight:800},
+  navBtnOn:{color:"#fff",border:"1px solid rgba(255,255,255,.35)",background:"rgba(255,255,255,.05)"},
+  navBtnGreen:{background:"#00d084",color:"#000",border:"1px solid #00d084",fontWeight:800},
   navUser:{color:"#00d084",fontSize:13,fontWeight:700},
   main:{position:"relative",zIndex:1,maxWidth:1120,margin:"0 auto",padding:"36px 24px 80px"},
   homeWrap:{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:32},
@@ -699,7 +699,7 @@ const S={
   adminBadge:{display:"inline-block",padding:"4px 14px",background:"rgba(240,192,64,.12)",border:"1px solid rgba(240,192,64,.3)",borderRadius:6,fontSize:12,color:"#f0c040",fontWeight:700},
   tabs:{display:"flex",gap:6,flexWrap:"wrap"},
   tab:{padding:"8px 14px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,color:"#8a9ab0",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'Barlow',sans-serif"},
-  tabOn:{background:"rgba(0,208,132,.12)",borderColor:"rgba(0,208,132,.35)",color:"#00d084"},
+  tabOn:{background:"rgba(0,208,132,.12)",border:"1px solid rgba(0,208,132,.35)",color:"#00d084"},
   groupRow:{display:"flex",gap:6,flexWrap:"wrap"},
   koHint:{padding:"14px 18px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,fontSize:13,color:"#7a8fa8",lineHeight:1.6},
   tableCard:{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)",borderRadius:14,padding:"16px 18px",display:"flex",flexDirection:"column",gap:8},
@@ -715,7 +715,7 @@ const S={
   tableLegend:{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#5a6a7a",marginTop:4},
   tableLegendDot:{width:10,height:10,borderRadius:3,background:"rgba(0,208,132,.35)",border:"1px solid rgba(0,208,132,.5)",display:"inline-block"},
   groupBtn:{padding:"6px 12px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:6,color:"#8a9ab0",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:"'Barlow',sans-serif"},
-  groupBtnOn:{background:"rgba(100,180,255,.12)",borderColor:"rgba(100,180,255,.35)",color:"#6ab4ff"},
+  groupBtnOn:{background:"rgba(100,180,255,.12)",border:"1px solid rgba(100,180,255,.35)",color:"#6ab4ff"},
   matchGrid:{display:"flex",flexDirection:"column",gap:10},
   mCard:{background:"rgba(255,255,255,.035)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"14px 18px",display:"flex",flexDirection:"column",gap:10},
   mMeta:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"},
