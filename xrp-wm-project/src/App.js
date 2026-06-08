@@ -210,6 +210,7 @@ export default function App(){
   const[profile,setProfile]=useState(null);
   const[tips,setTips]=useState({});
   const[specialTips,setSpecialTips]=useState({});
+  const[specialResults,setSpecialResults]=useState({});
   const[results,setResults]=useState({});
   const[leaderboard,setLboard]=useState([]);
   const[notif,setNotif]=useState(null);
@@ -219,6 +220,10 @@ export default function App(){
 
   const loadResults=useCallback(async()=>{
     try{const rows=await sb("results?select=match_id,home_score,away_score");const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home_score,away:r.away_score};});setResults(map);}catch(e){console.error(e);}
+  },[]);
+
+  const loadSpecialResults=useCallback(async()=>{
+    try{const rows=await sb("special_results?select=bet_id,value");const map={};(rows||[]).forEach(r=>{map[r.bet_id]=r.value;});setSpecialResults(map);}catch(e){console.error(e);}
   },[]);
 
   const loadTips=useCallback(async(token)=>{
@@ -243,13 +248,19 @@ export default function App(){
 
   const loadLeaderboard=useCallback(async()=>{
     try{
-      const[profiles,allTips,allResults]=await Promise.all([sb("profiles?select=id,username"),sb("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score")]);
+      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sb("profiles?select=id,username"),sb("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),sb("special_tips?select=user_id,bet_id,value"),sb("special_results?select=bet_id,value")]);
       const resMap={};(allResults||[]).forEach(r=>{resMap[r.match_id]={home:r.home_score,away:r.away_score};});
+      const sResMap={};(allSpecialResults||[]).forEach(r=>{sResMap[r.bet_id]=r.value;});
       const lb=(profiles||[]).map(p=>{
         const ut=(allTips||[]).filter(t=>t.user_id===p.id);
         let pts=0,exact=0,tend=0;
         ut.forEach(t=>{const p2=calcPoints({home:t.home_score,away:t.away_score},resMap[t.match_id]);if(p2===3){pts+=3;exact++;}else if(p2===1){pts+=1;tend++;}});
-        return{username:p.username,pts,exact,tend,tipped:ut.length};
+        let specialPts=0;
+        (allSpecialTips||[]).filter(t=>t.user_id===p.id).forEach(t=>{
+          const correct=sResMap[t.bet_id];
+          if(correct&&t.value===correct){const bet=SPECIAL_BETS.find(b=>b.id===t.bet_id);if(bet)specialPts+=bet.points;}
+        });
+        return{username:p.username,pts:pts+specialPts,exact,tend,tipped:ut.length,specialPts};
       }).sort((a,b)=>b.pts-a.pts||b.exact-a.exact);
       setLboard(lb);
     }catch(e){console.error(e);}
@@ -258,8 +269,8 @@ export default function App(){
   useEffect(()=>{
     const stored=localStorage.getItem("xrp_session");
     if(stored){try{const sess=JSON.parse(stored);setSession(sess);loadTips(sess.access_token);loadSpecialTips(sess.access_token);}catch{}}
-    loadResults();loadLeaderboard();
-  },[loadResults,loadLeaderboard,loadTips,loadSpecialTips]);
+    loadResults();loadSpecialResults();loadLeaderboard();
+  },[loadResults,loadSpecialResults,loadLeaderboard,loadTips,loadSpecialTips]);
 
   useEffect(()=>{
     if(!session)return;
@@ -349,6 +360,15 @@ export default function App(){
     }catch(e){notify("Fehler!","err");}
   };
 
+  const saveSpecialResult=async(betId,value)=>{
+    if(!session||!value)return;
+    const body={bet_id:betId,value,updated_at:new Date().toISOString()};
+    try{
+      await sbUpsert("special_results","bet_id",body,session.access_token);
+      setSpecialResults(r=>({...r,[betId]:value}));loadLeaderboard();notify("Sondertipp-Ergebnis gespeichert! ✓");
+    }catch(e){console.error(e);notify("Fehler beim Speichern des Sondertipp-Ergebnisses!","err");}
+  };
+
   return(
     <div style={S.root}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700;900&display=swap');*{box-sizing:border-box;margin:0;padding:0}input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}input[type=number]{-moz-appearance:textfield}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0f1e}::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:3px}a:hover{opacity:.8}button:hover{filter:brightness(1.1)}select{background:#111;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:8px 12px;font-size:14px;outline:none;width:100%}`}</style>
@@ -377,7 +397,7 @@ export default function App(){
         {page==="register"&&<RegisterPage onRegister={handleRegister} setPage={setPage} loading={loading}/>}
         {page==="login"&&<LoginPage onLogin={handleLogin} setPage={setPage} loading={loading}/>}
         {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} saveTip={saveTip} submitTip={submitTip} saveResult={saveResult} setPage={setPage}/>}
-        {page==="special"&&<SpecialBetsPage session={session} specialTips={specialTips} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} setPage={setPage}/>}
+        {page==="special"&&<SpecialBetsPage session={session} profile={profile} specialTips={specialTips} specialResults={specialResults} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} saveSpecialResult={saveSpecialResult} setPage={setPage}/>}
         {page==="leaderboard"&&<LeaderboardPage leaderboard={leaderboard} profile={profile} onRefresh={loadLeaderboard}/>}
       </main>
       <footer style={S.footer}>
@@ -512,7 +532,7 @@ function GroupTable({group,results}){
   </div>);
 }
 
-function SpecialBetsPage({session,specialTips,saveSpecialTip,submitSpecialTip,setPage}){
+function SpecialBetsPage({session,profile,specialTips,specialResults,saveSpecialTip,submitSpecialTip,saveSpecialResult,setPage}){
   if(!session)return(<div style={S.guestWrap}><div style={S.guestCard}>
     <span style={{fontSize:72}}>🌟</span><h2 style={S.authTitle}>Meld dich an!</h2>
     <p style={{color:"#7a8fa8",marginBottom:16}}>Sondertipps nur für angemeldete Nutzer.</p>
@@ -525,36 +545,54 @@ function SpecialBetsPage({session,specialTips,saveSpecialTip,submitSpecialTip,se
       <h2 style={S.tipsH2}>🌟 Sondertipps</h2>
       <p style={S.tipsHint}>Deadline: vor dem Eröffnungsspiel · 11.06.2026 · 21:00 Uhr MESZ</p>
       {allLocked&&<div style={{...S.adminBadge,background:"rgba(255,80,80,.15)",border:"1px solid rgba(255,80,80,.3)",color:"#ff8080"}}>🔒 Gesperrt – Turnier hat begonnen</div>}
+      {profile?.is_admin&&<div style={S.adminBadge}>🔐 Admin-Modus – richtige Ergebnisse eintragen</div>}
     </div>
-    <div style={S.matchGrid}>{SPECIAL_BETS.map(bet=>{
-      const entry=specialTips[bet.id];
-      const val=entry?.value||"";
-      const submitted=!!entry?.submitted;
-      const locked=allLocked||submitted;
-      const canSubmit=!allLocked&&!submitted&&!!val;
-      return(<div key={bet.id} style={S.mCard}>
-        <div style={S.mMeta}>
-          <span style={S.mGroup}>{bet.label}</span>
-          <span style={{...S.ptsPill,background:"rgba(167,139,250,.2)",color:"#a78bfa",border:"1px solid rgba(167,139,250,.4)"}}>+{bet.points} Punkte</span>
-          <span style={S.mDate}>Deadline: {bet.deadline} · {bet.dtime} Uhr</span>
-          {submitted&&<span style={{...S.ptsPill,background:"rgba(0,208,132,.15)",color:"#00d084",border:"1px solid rgba(0,208,132,.35)"}}>🔒 Abgeschickt</span>}
-        </div>
-        <p style={{fontSize:13,color:"#7a8fa8",marginBottom:8}}>{bet.desc}</p>
-        {locked?(
-          <div style={{padding:"10px 14px",background:"rgba(255,255,255,.05)",borderRadius:8,fontSize:14,color:"#aab8cc"}}>{val?<><span style={{marginRight:8}}>{FLAG[val]||"🏳️"}</span>{val}</>:"Kein Tipp abgegeben"}</div>
-        ):(<>
-          <select value={val} onChange={e=>saveSpecialTip(bet.id,e.target.value)}>
-            <option value="">– Team auswählen –</option>
-            {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
-          </select>
-          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
-            <button style={{...S.submitTipBtn,...(canSubmit?{}:S.submitTipBtnOff)}} disabled={!canSubmit} onClick={()=>submitSpecialTip(bet.id,val)}>🔒 Tipp abschicken &amp; sperren</button>
-          </div>
-        </>)}
-        {val&&!locked&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>✓ Entwurf gespeichert: {FLAG[val]} {val} <span style={{color:"#7a8fa8"}}>– zum Sperren auf „Abschicken“ klicken</span></div>}
-        {submitted&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>🔒 Final abgeschickt – kann nicht mehr geändert werden.</div>}
-      </div>);
-    })}</div>
+    <div style={S.matchGrid}>{SPECIAL_BETS.map(bet=>(
+      <SpecialBetCard key={bet.id} bet={bet} entry={specialTips[bet.id]} allLocked={allLocked} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} specialResult={specialResults[bet.id]} saveSpecialResult={saveSpecialResult} isAdmin={profile?.is_admin}/>
+    ))}</div>
+  </div>);
+}
+
+function SpecialBetCard({bet,entry,allLocked,saveSpecialTip,submitSpecialTip,specialResult,saveSpecialResult,isAdmin}){
+  const[adminVal,setAdminVal]=useState(specialResult||"");
+  useEffect(()=>{setAdminVal(specialResult||"");},[specialResult]);
+  const val=entry?.value||"";
+  const submitted=!!entry?.submitted;
+  const locked=allLocked||submitted;
+  const canSubmit=!allLocked&&!submitted&&!!val;
+  const earned=specialResult?(val&&val===specialResult?bet.points:0):null;
+  const earnedStyle=earned>0?{background:"rgba(0,208,132,.2)",color:"#00d084",border:"1px solid rgba(0,208,132,.4)"}:{background:"rgba(255,80,80,.15)",color:"#ff6b6b",border:"1px solid rgba(255,80,80,.3)"};
+  return(<div style={S.mCard}>
+    <div style={S.mMeta}>
+      <span style={S.mGroup}>{bet.label}</span>
+      <span style={{...S.ptsPill,background:"rgba(167,139,250,.2)",color:"#a78bfa",border:"1px solid rgba(167,139,250,.4)"}}>+{bet.points} Punkte</span>
+      <span style={S.mDate}>Deadline: {bet.deadline} · {bet.dtime} Uhr</span>
+      {submitted&&<span style={{...S.ptsPill,background:"rgba(0,208,132,.15)",color:"#00d084",border:"1px solid rgba(0,208,132,.35)"}}>🔒 Abgeschickt</span>}
+      {earned!==null&&<span style={{...S.ptsPill,...earnedStyle}}>{earned>0?`✓ +${earned} Pkt`:"✗ 0 Pkt"}</span>}
+    </div>
+    <p style={{fontSize:13,color:"#7a8fa8",marginBottom:8}}>{bet.desc}</p>
+    {locked?(
+      <div style={{padding:"10px 14px",background:"rgba(255,255,255,.05)",borderRadius:8,fontSize:14,color:"#aab8cc"}}>{val?<><span style={{marginRight:8}}>{FLAG[val]||"🏳️"}</span>{val}</>:"Kein Tipp abgegeben"}</div>
+    ):(<>
+      <select value={val} onChange={e=>saveSpecialTip(bet.id,e.target.value)}>
+        <option value="">– Team auswählen –</option>
+        {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
+      </select>
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+        <button style={{...S.submitTipBtn,...(canSubmit?{}:S.submitTipBtnOff)}} disabled={!canSubmit} onClick={()=>submitSpecialTip(bet.id,val)}>🔒 Tipp abschicken &amp; sperren</button>
+      </div>
+    </>)}
+    {val&&!locked&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>✓ Entwurf gespeichert: {FLAG[val]} {val} <span style={{color:"#7a8fa8"}}>– zum Sperren auf „Abschicken“ klicken</span></div>}
+    {submitted&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>🔒 Final abgeschickt – kann nicht mehr geändert werden.</div>}
+    {specialResult&&<div style={{marginTop:8,fontSize:13,color:"#a78bfa"}}>📌 Richtiges Ergebnis: {FLAG[specialResult]||"🏳️"} {specialResult}</div>}
+    {isAdmin&&!specialResult&&(<div style={S.adminRow}>
+      <span style={S.adminLabel}>Admin – richtiges Ergebnis:</span>
+      <select value={adminVal} onChange={e=>setAdminVal(e.target.value)}>
+        <option value="">– auswählen –</option>
+        {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
+      </select>
+      <button style={S.saveBtn} onClick={()=>saveSpecialResult(bet.id,adminVal)}>✓</button>
+    </div>)}
   </div>);
 }
 
