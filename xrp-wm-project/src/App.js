@@ -226,7 +226,16 @@ export default function App(){
       catch{rows=await sb(q("match_id,home_score,away_score"),"GET",null,token);}
       const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home_score,away:r.away_score,submitted:!!r.submitted};});
       setTips(map);
-      const stored=localStorage.getItem("xrp_special_tips");if(stored)setSpecialTips(JSON.parse(stored));
+    }catch(e){console.error(e);}
+  },[]);
+
+  const loadSpecialTips=useCallback(async(token)=>{
+    try{
+      let uid;try{uid=JSON.parse(atob(token.split(".")[1])).sub;}catch{}
+      const q=sel=>uid?`special_tips?user_id=eq.${uid}&select=${sel}`:`special_tips?select=${sel}`;
+      const rows=await sb(q("bet_id,value,submitted"),"GET",null,token);
+      const map={};(rows||[]).forEach(r=>{map[r.bet_id]={value:r.value,submitted:!!r.submitted};});
+      setSpecialTips(map);
     }catch(e){console.error(e);}
   },[]);
 
@@ -246,9 +255,9 @@ export default function App(){
 
   useEffect(()=>{
     const stored=localStorage.getItem("xrp_session");
-    if(stored){try{const sess=JSON.parse(stored);setSession(sess);loadTips(sess.access_token);}catch{}}
+    if(stored){try{const sess=JSON.parse(stored);setSession(sess);loadTips(sess.access_token);loadSpecialTips(sess.access_token);}catch{}}
     loadResults();loadLeaderboard();
-  },[loadResults,loadLeaderboard,loadTips]);
+  },[loadResults,loadLeaderboard,loadTips,loadSpecialTips]);
 
   useEffect(()=>{
     if(!session)return;
@@ -274,7 +283,7 @@ export default function App(){
       const data=await sbAuth("token?grant_type=password",{email:`${username.replace(/\s/g,"_")}@xrp-wm.de`,password});
       const sess={access_token:data.access_token,user:data.user};
       setSession(sess);localStorage.setItem("xrp_session",JSON.stringify(sess));
-      await loadTips(data.access_token);setPage("tips");notify(`Willkommen zurück, ${username}! ⚽`);
+      await loadTips(data.access_token);await loadSpecialTips(data.access_token);setPage("tips");notify(`Willkommen zurück, ${username}! ⚽`);
     }catch(e){notify("Falscher Benutzername oder Passwort!","err");}
     setLoading(false);
   };
@@ -306,8 +315,27 @@ export default function App(){
     }catch(e){notify("Fehler beim Abschicken!","err");}
   };
 
-  const saveSpecialTip=(betId,value)=>{
-    const newST={...specialTips,[betId]:value};setSpecialTips(newST);localStorage.setItem("xrp_special_tips",JSON.stringify(newST));
+  const saveSpecialTip=async(betId,value)=>{
+    if(!session||!value)return;
+    if(isMatchLocked("11.06.2026","20:00")){notify("⛔ Sondertipps sind bereits gesperrt!","err");return;}
+    if(specialTips[betId]?.submitted){notify("⛔ Sondertipp ist bereits abgeschickt und gesperrt!","err");return;}
+    const body={user_id:session.user.id,bet_id:betId,value,submitted:false,updated_at:new Date().toISOString()};
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/special_tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      setSpecialTips(t=>({...t,[betId]:{value,submitted:false}}));
+    }catch(e){console.error(e);}
+  };
+
+  const submitSpecialTip=async(betId,value)=>{
+    if(!session||!value)return;
+    if(isMatchLocked("11.06.2026","20:00")){notify("⛔ Sondertipps sind bereits gesperrt!","err");return;}
+    if(specialTips[betId]?.submitted)return;
+    const body={user_id:session.user.id,bet_id:betId,value,submitted:true,updated_at:new Date().toISOString()};
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/special_tips`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      setSpecialTips(t=>({...t,[betId]:{value,submitted:true}}));
+      notify("🔒 Sondertipp abgeschickt & gesperrt!");
+    }catch(e){notify("Fehler beim Abschicken!","err");}
   };
 
   const saveResult=async(matchId,home,away)=>{
@@ -347,7 +375,7 @@ export default function App(){
         {page==="register"&&<RegisterPage onRegister={handleRegister} setPage={setPage} loading={loading}/>}
         {page==="login"&&<LoginPage onLogin={handleLogin} setPage={setPage} loading={loading}/>}
         {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} saveTip={saveTip} submitTip={submitTip} saveResult={saveResult} setPage={setPage}/>}
-        {page==="special"&&<SpecialBetsPage session={session} specialTips={specialTips} saveSpecialTip={saveSpecialTip} setPage={setPage}/>}
+        {page==="special"&&<SpecialBetsPage session={session} specialTips={specialTips} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} setPage={setPage}/>}
         {page==="leaderboard"&&<LeaderboardPage leaderboard={leaderboard} profile={profile} onRefresh={loadLeaderboard}/>}
       </main>
       <footer style={S.footer}>
@@ -482,7 +510,7 @@ function GroupTable({group,results}){
   </div>);
 }
 
-function SpecialBetsPage({session,specialTips,saveSpecialTip,setPage}){
+function SpecialBetsPage({session,specialTips,saveSpecialTip,submitSpecialTip,setPage}){
   if(!session)return(<div style={S.guestWrap}><div style={S.guestCard}>
     <span style={{fontSize:72}}>🌟</span><h2 style={S.authTitle}>Meld dich an!</h2>
     <p style={{color:"#7a8fa8",marginBottom:16}}>Sondertipps nur für angemeldete Nutzer.</p>
@@ -497,23 +525,32 @@ function SpecialBetsPage({session,specialTips,saveSpecialTip,setPage}){
       {allLocked&&<div style={{...S.adminBadge,background:"rgba(255,80,80,.15)",borderColor:"rgba(255,80,80,.3)",color:"#ff8080"}}>🔒 Gesperrt – Turnier hat begonnen</div>}
     </div>
     <div style={S.matchGrid}>{SPECIAL_BETS.map(bet=>{
-      const val=specialTips[bet.id]||"";
+      const entry=specialTips[bet.id];
+      const val=entry?.value||"";
+      const submitted=!!entry?.submitted;
+      const locked=allLocked||submitted;
+      const canSubmit=!allLocked&&!submitted&&!!val;
       return(<div key={bet.id} style={S.mCard}>
         <div style={S.mMeta}>
           <span style={S.mGroup}>{bet.label}</span>
           <span style={{...S.ptsPill,background:"rgba(167,139,250,.2)",color:"#a78bfa",border:"1px solid rgba(167,139,250,.4)"}}>+{bet.points} Punkte</span>
           <span style={S.mDate}>Deadline: {bet.deadline} · {bet.dtime} Uhr</span>
+          {submitted&&<span style={{...S.ptsPill,background:"rgba(0,208,132,.15)",color:"#00d084",border:"1px solid rgba(0,208,132,.35)"}}>🔒 Abgeschickt</span>}
         </div>
         <p style={{fontSize:13,color:"#7a8fa8",marginBottom:8}}>{bet.desc}</p>
-        {allLocked?(
+        {locked?(
           <div style={{padding:"10px 14px",background:"rgba(255,255,255,.05)",borderRadius:8,fontSize:14,color:"#aab8cc"}}>{val?<><span style={{marginRight:8}}>{FLAG[val]||"🏳️"}</span>{val}</>:"Kein Tipp abgegeben"}</div>
-        ):(
+        ):(<>
           <select value={val} onChange={e=>saveSpecialTip(bet.id,e.target.value)}>
             <option value="">– Team auswählen –</option>
             {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
           </select>
-        )}
-        {val&&!allLocked&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>✓ Gespeichert: {FLAG[val]} {val}</div>}
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+            <button style={{...S.submitTipBtn,...(canSubmit?{}:S.submitTipBtnOff)}} disabled={!canSubmit} onClick={()=>submitSpecialTip(bet.id,val)}>🔒 Tipp abschicken &amp; sperren</button>
+          </div>
+        </>)}
+        {val&&!locked&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>✓ Entwurf gespeichert: {FLAG[val]} {val} <span style={{color:"#7a8fa8"}}>– zum Sperren auf „Abschicken“ klicken</span></div>}
+        {submitted&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>🔒 Final abgeschickt – kann nicht mehr geändert werden.</div>}
       </div>);
     })}</div>
   </div>);
