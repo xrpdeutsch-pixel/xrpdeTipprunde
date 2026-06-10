@@ -111,6 +111,45 @@ src/
 prisma/schema.prisma           Article, NewsItem, AutomationLog, Setting
 ```
 
+## Deployment auf Vercel (öffentlicher Link)
+
+Damit du eine echte, öffentlich erreichbare URL bekommst, deploye das Projekt
+auf [Vercel](https://vercel.com) (kostenloser Plan reicht):
+
+1. **Postgres-Datenbank anlegen** (z. B. [Neon](https://neon.tech), kostenlos):
+   - Projekt erstellen, die `DATABASE_URL`-Connection-String kopieren
+     (Format: `postgresql://user:pass@host/db?sslmode=require`).
+
+2. **Vercel-Projekt erstellen**:
+   - Auf [vercel.com](https://vercel.com) mit GitHub einloggen.
+   - "Add New… → Project" → das Repo `xrpdeutsch-pixel/xrpdetipprunde`
+     importieren.
+   - **Root Directory** auf `crypto-news-ai-publisher` setzen (wichtig, da
+     das Projekt in einem Unterordner liegt).
+   - Framework Preset: Next.js (wird automatisch erkannt).
+
+3. **Umgebungsvariablen** im Vercel-Projekt unter
+   "Settings → Environment Variables" eintragen:
+   - `DATABASE_URL` – Connection-String aus Schritt 1
+   - `AI_PROVIDER` – `anthropic`
+   - `ANTHROPIC_API_KEY` – dein Anthropic API Key
+   - optional: `PERPLEXITY_API_KEY`, `YOUTUBE_API_KEY`,
+     `WORDPRESS_URL`, `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD`,
+     `CRON_SECRET`
+
+4. **Deploy** klicken. Vercel führt automatisch `npm install` und
+   `npm run build` aus - der Build-Schritt enthält bereits
+   `prisma generate && prisma migrate deploy`, wendet also das
+   Datenbankschema automatisch auf die in `DATABASE_URL` hinterlegte
+   Datenbank an.
+
+5. Nach dem Deploy erhältst du einen Link wie
+   `https://xrpdetipprunde.vercel.app` (oder eine eigene Domain).
+
+6. **Automatisierung (optional)**: In `vercel.json` einen Cron-Job für
+   `/api/cron/news-check` einrichten (Vercel Cron, stündlich), siehe
+   [Vercel-Doku zu Cron Jobs](https://vercel.com/docs/cron-jobs).
+
 ## Hinweis zum Sandbox-Test
 
 In der Entwicklungssandbox sind ausgehende Verbindungen zu externen APIs
