@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ArticleStatus {
+  QUEUED
+  RESEARCHING
+  GENERATING
+  DRAFT
+  REVIEW
+  PUBLISHED
+  FAILED
+}
+
+enum SourceType {
+  YOUTUBE
+  NEWS
+  MANUAL
+}
+
+enum NewsCategory {
+  XRP
+  BITCOIN
+  CRYPTO
+  FINANCE
+  MACRO
+}
+
+model Article {
+  id     String        @id @default(cuid())
+  status ArticleStatus @default(QUEUED)
+
+  sourceType  SourceType
+  sourceUrl   String?
+  sourceTitle String?
+
+  // Core content
+  seoTitle       String?
+  seoSubheadline String?
+  slug           String?  @unique
+  highlights     Json? // string[]
+  introduction   String?  @db.Text
+  body           String?  @db.Text // full HTML article body incl. subheadings
+  conclusion     String?  @db.Text
+
+  // SEO metadata
+  metaDescription  String?
+  keywords         Json? // string[]
+  semanticKeywords Json? // string[]
+  faq              Json? // { question: string, answer: string }[]
+  schemaMarkup     Json? // JSON-LD object
+  internalLinks    Json? // { anchor: string, url: string }[]
+  externalLinks    Json? // { anchor: string, url: string }[]
+  seoScore         Int?
+
+  // WordPress
+  wpTags          Json? // string[]
+  wpCategories    Json? // string[]
+  wordpressPostId Int?
+  wordpressUrl    String?
+  wordpressStatus String?
+
+  // Social media
+  socialSnippet  String? @db.Text
+  twitterSnippet String? @db.Text
+
+  // Image prompts
+  featuredImagePrompt  String? @db.Text
+  thumbnailPrompt      String? @db.Text
+  xPostImagePrompt     String? @db.Text
+  instagramImagePrompt String? @db.Text
+
+  // Research
+  researchSummary Json?
+
+  wordCount    Int?
+  errorMessage String? @db.Text
+
+  newsItems NewsItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([sourceType])
+}
+
+model NewsItem {
+  id     String       @id @default(cuid())
+  title  String
+  url    String       @unique
+  source String
+  summary String? @db.Text
+  content String? @db.Text
+
+  category    NewsCategory
+  publishedAt DateTime?
+  fetchedAt   DateTime     @default(now())
+
+  relevanceScore Int?
+  isDuplicate    Boolean @default(false)
+  isFakeNews     Boolean @default(false)
+
+  articleId String?
+  article   Article? @relation(fields: [articleId], references: [id])
+
+  @@index([category])
+  @@index([fetchedAt])
+}
+
+model AutomationLog {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  message   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
