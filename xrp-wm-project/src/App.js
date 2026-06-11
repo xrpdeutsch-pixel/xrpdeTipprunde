@@ -9,6 +9,19 @@ const sb = async (path, method = "GET", body = null, token = null) => {
   if(!res.ok){const err=await res.text();throw new Error(err);}
   const text=await res.text();return text?JSON.parse(text):null;
 };
+const sbAll = async (path) => {
+  const sep = path.includes("?") ? "&" : "?";
+  let all=[], from=0; const size=1000;
+  while(true){
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}order=id`,{headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Range-Unit":"items","Range":`${from}-${from+size-1}`}});
+    if(!res.ok){const err=await res.text();throw new Error(err);}
+    const page=await res.json();
+    all=all.concat(page);
+    if(page.length<size)break;
+    from+=size;
+  }
+  return all;
+};
 const sbUpsert = async (path, conflictCols, body, token) => {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}?on_conflict=${conflictCols}`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
   if(!res.ok){const err=await res.text();throw new Error(err);}
@@ -249,7 +262,7 @@ export default function App(){
   const loadLeaderboard=useCallback(async()=>{
     try{
       const safe=p=>p.catch(e=>{console.error(e);return[];});
-      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sb("profiles?select=id,username"),sb("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),safe(sb("special_tips?select=user_id,bet_id,value")),safe(sb("special_results?select=bet_id,value"))]);
+      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sbAll("profiles?select=id,username"),sbAll("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),safe(sbAll("special_tips?select=user_id,bet_id,value")),safe(sb("special_results?select=bet_id,value"))]);
       const resMap={};(allResults||[]).forEach(r=>{resMap[r.match_id]={home:r.home_score,away:r.away_score};});
       const sResMap={};(allSpecialResults||[]).forEach(r=>{sResMap[r.bet_id]=r.value;});
       const lb=(profiles||[]).map(p=>{
@@ -307,7 +320,7 @@ export default function App(){
   const saveTip=async(matchId,home,away)=>{
     if(!session||home===""||away==="")return;
     const match=ALL_MATCHES.find(m=>m.id===matchId);
-    if(match&&(match.locked||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
+    if(match&&(match.locked||results[matchId]||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
     if(tips[matchId]?.submitted){notify("⛔ Tipp ist bereits abgeschickt und gesperrt!","err");return;}
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:false,updated_at:new Date().toISOString()};
     try{
@@ -319,7 +332,7 @@ export default function App(){
   const submitTip=async(matchId,home,away)=>{
     if(!session||home===""||away==="")return;
     const match=ALL_MATCHES.find(m=>m.id===matchId);
-    if(match&&(match.locked||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
+    if(match&&(match.locked||results[matchId]||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
     if(tips[matchId]?.submitted)return;
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:true,updated_at:new Date().toISOString()};
     try{
@@ -603,7 +616,7 @@ function MatchCard({match,tip,result,onTip,onSubmit,onResult,isAdmin}){
   useEffect(()=>{setH(tip?.home??"");setA(tip?.away??"");},[tip]);
   useEffect(()=>{setRh(result?.home??"");setRa(result?.away??"");},[result]);
   const pts=(result&&tip&&h!==""&&a!=="")?calcPoints(tip,result):null;
-  const timeLocked=match.locked||(!isAdmin&&isMatchLocked(match.date,match.time));
+  const timeLocked=match.locked||!!result||(!isAdmin&&isMatchLocked(match.date,match.time));
   const submitted=!!tip?.submitted;
   const locked=timeLocked||submitted;
   const canSubmit=!timeLocked&&!submitted&&h!==""&&a!=="";
