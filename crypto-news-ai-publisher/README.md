@@ -82,6 +82,22 @@ API · YouTube (Transkript + oEmbed/Data API) · RSS / Google News
    npm run dev
    ```
 
+   Der Server ist danach unter `http://localhost:3000` erreichbar.
+
+## Zugriff aus dem Heimnetzwerk (z. B. vom Smartphone)
+
+Der `dev`-Befehl bindet bereits an `0.0.0.0`, ist also auch für andere
+Geräte im selben WLAN erreichbar - ohne dass irgendetwas im Internet
+veröffentlicht wird:
+
+1. Lokale IP-Adresse des Rechners herausfinden:
+   - Windows: `ipconfig` (Wert bei "IPv4-Adresse", z. B. `192.168.1.50`)
+   - macOS/Linux: `ifconfig` oder `ip addr` (z. B. `192.168.1.50`)
+2. Auf dem Smartphone (im selben WLAN) im Browser öffnen:
+   `http://192.168.1.50:3000` (IP entsprechend anpassen).
+3. Falls die Verbindung nicht klappt: Firewall des Rechners prüfen und
+   eingehende Verbindungen auf Port 3000 erlauben.
+
 ## Architektur
 
 ```
