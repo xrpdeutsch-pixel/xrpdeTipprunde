@@ -356,9 +356,9 @@ export default function App(){
     if(!session||home===""||away==="")return;
     const body={match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),updated_at:new Date().toISOString()};
     try{
-      await fetch(`${SUPABASE_URL}/rest/v1/results`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${session.access_token}`,"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(body)});
+      await sbUpsert("results","match_id",body,session.access_token);
       setResults(r=>({...r,[matchId]:{home:parseInt(home),away:parseInt(away)}}));loadLeaderboard();notify("Ergebnis gespeichert! ✓");
-    }catch(e){notify("Fehler!","err");}
+    }catch(e){console.error(e);notify("⚠️ Ergebnis konnte nicht gespeichert werden!","err");}
   };
 
   const saveSpecialResult=async(betId,value)=>{
