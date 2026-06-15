@@ -43,6 +43,9 @@ SCHREIBSTIL:
 - Ordne Informationen journalistisch: die wichtigste Information zuerst (umgekehrte Pyramide), dann Kontext, Einordnung und Analyse.
 - Zitate werden eingeordnet und mit Attribution versehen ("sagte ... gegenüber ...", "laut ...", "wie ... mitteilte").
 - Eigene Einordnung und Analyse einbauen, nicht nur Fakten aneinanderreihen.
+- Keine Emojis, keine Hype-Sprache, keine Clickbait-Übertreibungen.
+- Keine Gedankenstriche ("-" oder "–") als Aufzählungszeichen - echte Listen ausschließlich als HTML <ul>/<li>.
+- Jede Zwischenüberschrift (H2/H3) muss wie eine eigenständige, professionelle Magazin-Headline wirken, nicht wie ein generisches Label ("Fazit", "Zusammenfassung" etc.).
 
 STRENG VERBOTEN sind KI-typische Floskeln und Phrasen, u.a.:
 ${BANNED_PHRASES.map((p) => `- "${p}"`).join("\n")}
@@ -53,6 +56,7 @@ INHALTLICHE ANFORDERUNGEN:
 - Bei Kursangaben, Prozentzahlen, Daten und Namen so präzise wie möglich bleiben - wenn Informationen unsicher sind, dies transparent kennzeichnen ("laut ersten Angaben", "Stand Redaktionsschluss").
 - Deutschsprachiger Artikel (de-DE), für ein Publikum mit Interesse an Krypto, Finanzen, Börse und Makroökonomie.
 - SEO-optimiert, aber niemals auf Kosten der Lesbarkeit ("Keyword-Stuffing" vermeiden).
+- Der Hauptteil (bodyHtml) soll - sofern für das Thema relevant - redaktionelle Einordnung in dieser Reihenfolge abdecken (jeweils als eigene H2-Sektion mit eigenständiger Headline, nicht wörtlich so benannt): Kontext/Was ist passiert, Markteinordnung, Auswirkungen auf XRP, Auswirkungen auf den breiteren Kryptomarkt, Risiken, Chancen.
 
 AUSGABEFORMAT:
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (keine Markdown-Codeblöcke, kein Text davor oder danach), das exakt folgender Struktur entspricht:
@@ -61,9 +65,9 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (keine Markdown-Codeblöc
   "seoTitle": string,            // SEO-Headline, max. 70 Zeichen, mit Hauptkeyword
   "seoSubheadline": string,      // Subheadline/Dachzeile, max. 140 Zeichen
   "slug": string,                // URL-Slug, kleingeschrieben, mit Bindestrichen, ohne Umlaute/Sonderzeichen
-  "highlights": string[],        // 3-5 prägnante Stichpunkte ("Auf einen Blick")
+  "highlights": string[],        // genau 4 prägnante Stichpunkte ("Auf einen Blick"): 1. wichtigste Aussage, 2. Marktauswirkung, 3. Bedeutung für XRP/Krypto, 4. wichtigster Fakt/Zahl
   "introduction": string,        // Einleitung (HTML, 2-3 Absätze in <p> Tags)
-  "bodyHtml": string,            // Hauptteil als HTML mit mehreren <h2>/<h3> Zwischenüberschriften und <p> Absätzen
+  "bodyHtml": string,            // Hauptteil als HTML mit mehreren <h2>/<h3> Zwischenüberschriften und <p> Absätzen, echte <ul>/<li> für Aufzählungen
   "conclusion": string,          // Schlussabschnitt (HTML, 1-2 Absätze in <p> Tags) - Einordnung/Ausblick, KEIN "Fazit:"-Label
   "metaDescription": string,     // Meta Description, 150-160 Zeichen
   "keywords": string[],          // 5-10 SEO Hauptkeywords
@@ -74,10 +78,10 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (keine Markdown-Codeblöc
   "wpCategories": string[],      // 1-3 WordPress Kategorien (z.B. "XRP", "Bitcoin", "Kryptowährungen", "Finanzen", "Makroökonomie")
   "socialSnippet": string,       // Social-Media-Post (Facebook/LinkedIn Stil), max. 400 Zeichen
   "twitterSnippet": string,      // X/Twitter Post inkl. relevanter Hashtags, max. 280 Zeichen
-  "featuredImagePrompt": string, // Bildgenerierungs-Prompt für das Beitragsbild (Englisch, detailliert)
-  "thumbnailPrompt": string,     // Bildgenerierungs-Prompt für ein YouTube-Thumbnail (Englisch, reißerisch aber seriös)
-  "xPostImagePrompt": string,    // Bildgenerierungs-Prompt für einen X/Twitter-Post (Englisch)
-  "instagramImagePrompt": string,// Bildgenerierungs-Prompt für ein Instagram-Visual (Englisch, quadratisches Format)
+  "featuredImagePrompt": string, // Bildgenerierungs-Prompt für das Beitragsbild (Englisch, detailliert, generator-agnostisch - funktioniert für DALL-E, Midjourney, Flux und Ideogram: beschreibe Szene, Stimmung, Objekte und Krypto-Bezug)
+  "thumbnailPrompt": string,     // Bildgenerierungs-Prompt für ein YouTube-Thumbnail (Englisch, generator-agnostisch, reißerisch aber seriös, inkl. Vorschlag für kurzen Thumbnail-Text)
+  "xPostImagePrompt": string,    // Bildgenerierungs-Prompt für einen X/Twitter-Post (Englisch, generator-agnostisch)
+  "instagramImagePrompt": string,// Bildgenerierungs-Prompt für ein Instagram-Visual (Englisch, quadratisches Format, generator-agnostisch)
   "internalLinks": [{ "anchor": string, "url": string }], // 2-4 Vorschläge für interne Verlinkungen (Platzhalter-URLs wie /thema/xrp-kurs)
   "externalLinks": [{ "anchor": string, "url": string }], // 2-4 Vorschläge für externe Verlinkungen zu seriösen Quellen (z.B. ripple.com, sec.gov, coindesk.com)
   "wordCount": number            // ungefähre Wortzahl von introduction + bodyHtml + conclusion

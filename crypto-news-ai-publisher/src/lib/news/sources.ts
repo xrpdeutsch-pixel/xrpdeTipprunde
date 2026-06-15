@@ -20,18 +20,36 @@ export const NEWS_SOURCES: Record<NewsCategoryKey, FeedSource[]> = {
     { name: "CoinTelegraph: XRP", url: "https://cointelegraph.com/rss/tag/xrp" },
     { name: "Ripple Insights", url: "https://ripple.com/insights/feed/" },
     { name: "Bitcoin Magazine", url: "https://bitcoinmagazine.com/.rss/full/" },
+    { name: "Google News: RLUSD & ODL", url: googleNews("RLUSD Ripple ODL Stablecoin") },
+    {
+      name: "Google News: SWIFT, ISO20022 & Banken",
+      url: googleNews("Ripple SWIFT ISO20022 Banken institutionelle Adoption"),
+    },
+    { name: "Google News: XRP ETF & SEC", url: googleNews("XRP ETF SEC Verfahren") },
   ],
   BITCOIN: [
     { name: "Google News: Bitcoin", url: googleNews("Bitcoin Kurs") },
     { name: "CoinTelegraph: Bitcoin", url: "https://cointelegraph.com/rss/tag/bitcoin" },
     { name: "Bitcoin Magazine", url: "https://bitcoinmagazine.com/.rss/full/" },
     { name: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
+    {
+      name: "Google News: Bitcoin ETF & institutionelle Adoption",
+      url: googleNews("Bitcoin ETF BlackRock Fidelity institutionelle Adoption"),
+    },
   ],
   CRYPTO: [
     { name: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
     { name: "CoinTelegraph", url: "https://cointelegraph.com/rss" },
     { name: "Decrypt", url: "https://decrypt.co/feed" },
     { name: "Google News: Krypto", url: googleNews("Kryptowährungen") },
+    {
+      name: "Google News: Ethereum, Stablecoins & Tokenisierung",
+      url: googleNews("Ethereum Stablecoins Tokenisierung CBDC Tether Circle"),
+    },
+    {
+      name: "Google News: Börsen & institutionelle Adoption",
+      url: googleNews("Coinbase Binance Kraken institutionelle Adoption Krypto"),
+    },
   ],
   FINANCE: [
     { name: "Google News: Finanzen & Börse", url: googleNews("Finanzen Börse Aktien") },
@@ -40,6 +58,10 @@ export const NEWS_SOURCES: Record<NewsCategoryKey, FeedSource[]> = {
       url: "https://www.handelsblatt.com/contentexport/feed/finanzen",
     },
     { name: "Yahoo Finance", url: "https://finance.yahoo.com/news/rssindex" },
+    {
+      name: "Google News: ETFs & Banken",
+      url: googleNews("ETF Banken Vermögensverwaltung Fidelity BlackRock"),
+    },
   ],
   MACRO: [
     {
@@ -50,6 +72,10 @@ export const NEWS_SOURCES: Record<NewsCategoryKey, FeedSource[]> = {
     {
       name: "Google News: Makroökonomie",
       url: googleNews("Makroökonomie Konjunktur Weltwirtschaft"),
+    },
+    {
+      name: "Google News: Banken & globale Wirtschaft",
+      url: googleNews("Fed EZB Banken Economy Zentralbanken"),
     },
   ],
 };

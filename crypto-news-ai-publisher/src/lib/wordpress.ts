@@ -1,21 +1,14 @@
 import { GeneratedArticle } from "@/types/article";
+import { getWordPressSettings, WordPressSettings } from "@/lib/settings";
 
-interface WordPressConfig {
+export interface WordPressConfig {
   baseUrl: string;
   username: string;
   appPassword: string;
 }
 
-function getConfig(): WordPressConfig | null {
-  const baseUrl = process.env.WORDPRESS_URL;
-  const username = process.env.WORDPRESS_USERNAME;
-  const appPassword = process.env.WORDPRESS_APP_PASSWORD;
-  if (!baseUrl || !username || !appPassword) return null;
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), username, appPassword };
-}
-
-export function isWordPressConfigured(): boolean {
-  return getConfig() !== null;
+export async function isWordPressConfigured(): Promise<boolean> {
+  return (await getWordPressSettings()) !== null;
 }
 
 function authHeader(config: WordPressConfig): string {
@@ -96,26 +89,66 @@ export interface WordPressPublishResult {
   status: string;
 }
 
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+}
+
 /**
- * Creates a draft post on the configured WordPress site via the REST API.
- * The post is always created with status "draft" - it is never published
- * automatically.
+ * Verifies WordPress credentials by calling the authenticated "me" endpoint.
+ */
+export async function testWordPressConnection(
+  config: WordPressConfig
+): Promise<ConnectionTestResult> {
+  try {
+    const me = (await wpFetch(config, "users/me?context=edit")) as {
+      name?: string;
+      slug?: string;
+    };
+    return {
+      success: true,
+      message: `Verbindung erfolgreich - angemeldet als "${me.name ?? me.slug ?? "unbekannt"}".`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Unbekannter Fehler bei der Verbindung.",
+    };
+  }
+}
+
+/**
+ * Creates a draft (or, if configured, private/published) post on the
+ * configured WordPress site via the REST API. Defaults to status "draft" -
+ * it is never published automatically unless explicitly configured.
  */
 export async function publishDraftToWordPress(
   article: GeneratedArticle
 ): Promise<WordPressPublishResult> {
-  const config = getConfig();
-  if (!config) {
+  const settings = await getWordPressSettings();
+  if (!settings) {
     throw new Error(
-      "WordPress ist nicht konfiguriert. Bitte WORDPRESS_URL, WORDPRESS_USERNAME und WORDPRESS_APP_PASSWORD setzen."
+      "WordPress ist nicht konfiguriert. Bitte unter Einstellungen die WordPress-Verbindung speichern."
     );
   }
 
+  const config: WordPressConfig = {
+    baseUrl: settings.baseUrl,
+    username: settings.username,
+    appPassword: settings.appPassword,
+  };
+
+  const categories = article.wpCategories?.length
+    ? article.wpCategories
+    : settings.defaultCategory
+      ? [settings.defaultCategory]
+      : [];
+
+  const tags = Array.from(new Set([...(article.wpTags ?? []), ...(settings.defaultTags ?? [])]));
+
   const [categoryIds, tagIds] = await Promise.all([
-    Promise.all(
-      (article.wpCategories ?? []).map((name) => getOrCreateTermId(config, "categories", name))
-    ),
-    Promise.all((article.wpTags ?? []).map((name) => getOrCreateTermId(config, "tags", name))),
+    Promise.all(categories.map((name) => getOrCreateTermId(config, "categories", name))),
+    Promise.all(tags.map((name) => getOrCreateTermId(config, "tags", name))),
   ]);
 
   const post = await wpFetch(config, "posts", {
@@ -125,7 +158,7 @@ export async function publishDraftToWordPress(
       slug: article.slug,
       excerpt: article.metaDescription,
       content: buildHtmlContent(article),
-      status: "draft",
+      status: settings.uploadStatus ?? "draft",
       categories: categoryIds,
       tags: tagIds,
     }),
@@ -134,3 +167,5 @@ export async function publishDraftToWordPress(
   const result = post as { id: number; link: string; status: string };
   return result;
 }
+
+export type { WordPressSettings };

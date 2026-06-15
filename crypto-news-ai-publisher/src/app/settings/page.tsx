@@ -1,3 +1,5 @@
+import SettingsForms from "@/components/SettingsForms";
+
 export const dynamic = "force-dynamic";
 
 interface ConfigItem {
@@ -36,18 +38,24 @@ function buildConfigItems(): ConfigItem[] {
       required: false,
     },
     {
-      label: "WordPress REST API",
+      label: "WordPress REST API (Fallback-Konfiguration)",
       description: "WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD",
       configured: !!(
         process.env.WORDPRESS_URL &&
         process.env.WORDPRESS_USERNAME &&
         process.env.WORDPRESS_APP_PASSWORD
       ),
+      required: false,
+    },
+    {
+      label: "Verschlüsselung gespeicherter Zugangsdaten",
+      description: "SETTINGS_ENCRYPTION_KEY - erforderlich, um WordPress-Zugangsdaten unten zu speichern",
+      configured: !!process.env.SETTINGS_ENCRYPTION_KEY,
       required: true,
     },
     {
-      label: "Automatisierung (stündlicher News-Check)",
-      description: "CRON_SECRET - sichert /api/cron/news-check ab",
+      label: "Automatisierung (stündlicher News-Check & täglicher Video-Check)",
+      description: "CRON_SECRET - sichert /api/cron/news-check und /api/cron/video-check ab",
       configured: !!process.env.CRON_SECRET,
       required: false,
     },
@@ -62,10 +70,13 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Einstellungen</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Konfiguration erfolgt über Umgebungsvariablen (.env). Diese Seite zeigt nur den
-          Konfigurationsstatus an - keine Geheimnisse werden angezeigt.
+          WordPress-Verbindung und YouTube-Kanal werden verschlüsselt in der Datenbank
+          gespeichert und können hier verwaltet werden. Alle übrigen Funktionen werden über
+          Umgebungsvariablen (.env) konfiguriert - der Status wird unten angezeigt.
         </p>
       </div>
+
+      <SettingsForms />
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-800">
         <table className="w-full text-sm">
@@ -106,13 +117,16 @@ export default function SettingsPage() {
           Automatisierung einrichten
         </h2>
         <p>
-          Richte einen stündlichen Cron-Job (z.B. via Vercel Cron oder einem externen Scheduler)
-          ein, der <code className="font-mono">GET /api/cron/news-check</code> aufruft. Die
-          Anfrage muss den Header{" "}
+          Zwei Cron-Jobs sind in <code className="font-mono">vercel.json</code> hinterlegt:{" "}
+          <code className="font-mono">GET /api/cron/news-check</code> (stündlich) und{" "}
+          <code className="font-mono">GET /api/cron/video-check</code> (täglich, ca. 13:05 Uhr
+          MEZ/MESZ - die UTC-Zeit ist auf den Winterzeit-Offset abgestimmt, im Sommer läuft er
+          ca. eine Stunde früher). Beide Anfragen müssen den Header{" "}
           <code className="font-mono">Authorization: Bearer &lt;CRON_SECRET&gt;</code> enthalten,
           falls <code className="font-mono">CRON_SECRET</code> gesetzt ist. Bei einer wichtigen
-          Top-Story (Relevanz ≥ 75) wird automatisch ein Artikel erstellt und - falls WordPress
-          konfiguriert ist - als Entwurf gespeichert.
+          Top-Story (Gesamtbewertung ≥ 75) bzw. einem neuen Video des oben konfigurierten
+          YouTube-Kanals wird automatisch ein Artikel erstellt und - falls WordPress konfiguriert
+          ist - als Entwurf gespeichert.
         </p>
       </div>
 

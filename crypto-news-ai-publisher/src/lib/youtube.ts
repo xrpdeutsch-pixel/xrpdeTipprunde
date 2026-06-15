@@ -1,4 +1,5 @@
 import { YoutubeTranscript } from "youtube-transcript";
+import Parser from "rss-parser";
 
 export interface VideoMetadata {
   videoId: string;
@@ -92,4 +93,82 @@ export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata
     channel: data.author_name,
     thumbnailUrl: data.thumbnail_url ?? "",
   };
+}
+
+/**
+ * Resolves a YouTube channel ID ("UC...") from a handle (e.g. "@xrpdeutschland")
+ * or a channel/handle URL. Uses the YouTube Data API if YOUTUBE_API_KEY is
+ * set, otherwise falls back to scraping the public channel page - no API key
+ * required, but less reliable.
+ */
+export async function resolveChannelId(handleOrUrl: string): Promise<string | null> {
+  let handle = handleOrUrl.trim();
+  try {
+    if (handle.startsWith("http")) {
+      const url = new URL(handle);
+      handle = url.pathname.split("/").filter(Boolean).pop() ?? handle;
+    }
+  } catch {
+    // not a URL, treat as a plain handle
+  }
+  handle = handle.replace(/^@/, "");
+  if (!handle) return null;
+
+  if (process.env.YOUTUBE_API_KEY) {
+    try {
+      const apiUrl = `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=@${handle}&key=${process.env.YOUTUBE_API_KEY}`;
+      const res = await fetch(apiUrl);
+      if (res.ok) {
+        const data = await res.json();
+        const id = data.items?.[0]?.id;
+        if (id) return id as string;
+      }
+    } catch (err) {
+      console.error("YouTube Data API Channel-Lookup fehlgeschlagen:", err);
+    }
+  }
+
+  try {
+    const res = await fetch(`https://www.youtube.com/@${handle}`);
+    if (res.ok) {
+      const html = await res.text();
+      const match = html.match(/"channelId":"(UC[0-9A-Za-z_-]{22})"/);
+      if (match) return match[1];
+    }
+  } catch (err) {
+    console.error("Channel-Seite konnte nicht geladen werden:", err);
+  }
+
+  return null;
+}
+
+export interface ChannelVideo {
+  videoId: string;
+  title: string;
+  url: string;
+  publishedAt: string | null;
+}
+
+/**
+ * Fetches the most recent uploads of a channel via its public RSS feed - no
+ * API key required.
+ */
+export async function fetchLatestChannelVideos(
+  channelId: string,
+  limit = 5
+): Promise<ChannelVideo[]> {
+  const parser = new Parser();
+  const feed = await parser.parseURL(
+    `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`
+  );
+
+  return (feed.items ?? [])
+    .map((item) => ({
+      videoId: extractVideoId(item.link ?? "") ?? "",
+      title: item.title ?? "",
+      url: item.link ?? "",
+      publishedAt: item.pubDate ?? null,
+    }))
+    .filter((video) => video.videoId)
+    .slice(0, limit);
 }

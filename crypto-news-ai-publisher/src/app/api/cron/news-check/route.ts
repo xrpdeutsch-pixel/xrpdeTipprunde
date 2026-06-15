@@ -39,8 +39,8 @@ export async function GET(request: Request) {
       }
 
       const top = ranking.items[topIndex];
-      if (top.relevanceScore < RELEVANCE_THRESHOLD) {
-        results[category] = `Top-Story unter Relevanz-Schwelle (${top.relevanceScore}).`;
+      if (top.overallScore < RELEVANCE_THRESHOLD) {
+        results[category] = `Top-Story unter Relevanz-Schwelle (${top.overallScore}).`;
         continue;
       }
 
@@ -59,6 +59,9 @@ export async function GET(request: Request) {
           category,
           publishedAt: top.publishedAt,
           relevanceScore: top.relevanceScore,
+          trustScore: top.trustScore,
+          seoScore: top.seoScore,
+          overallScore: top.overallScore,
           isDuplicate: top.isDuplicate,
           isFakeNews: top.isFakeNews,
         },
@@ -68,7 +71,7 @@ export async function GET(request: Request) {
 
       await prisma.newsItem.update({ where: { id: newsItem.id }, data: { articleId: article.id } });
 
-      if (isWordPressConfigured()) {
+      if (await isWordPressConfigured()) {
         const generated = articleToGenerated(article);
         const wpResult = await publishDraftToWordPress(generated);
         await prisma.article.update({

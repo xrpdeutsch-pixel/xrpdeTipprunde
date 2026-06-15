@@ -81,7 +81,8 @@ model Article {
   wordCount    Int?
   errorMessage String? @db.Text
 
-  newsItems NewsItem[]
+  newsItems       NewsItem[]
+  processedVideos ProcessedVideo[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -103,6 +104,9 @@ model NewsItem {
   fetchedAt   DateTime     @default(now())
 
   relevanceScore Int?
+  trustScore     Int?
+  seoScore       Int?
+  overallScore   Int?
   isDuplicate    Boolean @default(false)
   isFakeNews     Boolean @default(false)
 
@@ -127,4 +131,46 @@ model Setting {
   key       String   @id
   value     String   @db.Text
   updatedAt DateTime @updatedAt
+}
+
+/// Singleton row (id = "singleton") holding the WordPress connection
+/// configured via the Settings UI. The application password is stored
+/// encrypted (see src/lib/crypto.ts) - it is never exposed to the frontend.
+model WordpressConnection {
+  id              String   @id @default("singleton")
+  baseUrl         String
+  username        String
+  appPasswordEnc  String   @db.Text
+  defaultCategory String?
+  defaultTags     Json? // string[]
+  uploadStatus    String   @default("draft") // draft | private | publish
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// Singleton row (id = "singleton") holding the monitored YouTube channel.
+/// Pre-filled with the XRP Deutschland channel by default.
+model YoutubeChannel {
+  id          String   @id @default("singleton")
+  channelName String   @default("XRP Deutschland")
+  handle      String   @default("@xrpdeutschland")
+  channelUrl  String   @default("https://youtube.com/@xrpdeutschland")
+  channelId   String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Tracks which videos of the monitored channel have already been turned
+/// into an article, so the daily check never processes the same video twice.
+model ProcessedVideo {
+  id          String   @id @default(cuid())
+  videoId     String   @unique
+  title       String
+  channelId   String?
+  articleId   String?
+  article     Article? @relation(fields: [articleId], references: [id])
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
 }

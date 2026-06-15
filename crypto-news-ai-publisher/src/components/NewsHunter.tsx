@@ -14,6 +14,9 @@ interface NewsItemDto {
   summary: string;
   publishedAt: string | null;
   relevanceScore: number;
+  trustScore: number;
+  seoScore: number;
+  overallScore: number;
   isDuplicate: boolean;
   isFakeNews: boolean;
   reason?: string;
@@ -155,7 +158,8 @@ export default function NewsHunter() {
                       </span>
                     )}
                     <span className="text-xs text-zinc-500">
-                      Relevanz {item.relevanceScore}/100
+                      Gesamt {item.overallScore}/100 · Relevanz {item.relevanceScore} ·
+                      Vertrauen {item.trustScore} · SEO {item.seoScore}
                     </span>
                   </div>
                   <a

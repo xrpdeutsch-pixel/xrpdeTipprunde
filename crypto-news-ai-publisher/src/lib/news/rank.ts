@@ -4,6 +4,9 @@ import { RawNewsItem } from "./rss";
 
 export interface RankedNewsItem extends RawNewsItem {
   relevanceScore: number;
+  trustScore: number;
+  seoScore: number;
+  overallScore: number;
   isDuplicate: boolean;
   isFakeNews: boolean;
   reason?: string;
@@ -14,13 +17,13 @@ export interface NewsRankingResult {
   topStoryIndex: number | null;
 }
 
-const RANKING_SYSTEM_PROMPT = `Du bist der Chef vom Dienst einer Krypto- und Finanzredaktion. Du bewertest eingehende Newsmeldungen: Du erkennst Duplikate (gleiche Story von mehreren Quellen), filterst unwichtige oder unseriöse Meldungen aus und bewertest die journalistische Relevanz. Antworte ausschließlich mit validem JSON ohne Markdown-Codeblock.`;
+const RANKING_SYSTEM_PROMPT = `Du bist der Chef vom Dienst einer Krypto- und Finanzredaktion. Du bewertest eingehende Newsmeldungen: Du erkennst Duplikate (gleiche Story von mehreren Quellen), filterst unwichtige oder unseriöse Meldungen aus und bewertest Relevanz, Vertrauenswürdigkeit und SEO-Potenzial. Antworte ausschließlich mit validem JSON ohne Markdown-Codeblock.`;
 
 const MAX_ITEMS = 40;
 
 /**
- * Uses the LLM to deduplicate, score relevance and pick the top story for a
- * batch of raw RSS items.
+ * Uses the LLM to deduplicate, score and pick the top story for a batch of
+ * raw RSS items.
  */
 export async function rankNewsItems(
   items: RawNewsItem[],
@@ -48,17 +51,30 @@ ${list}
 Aufgaben:
 1. Erkenne Duplikate: Mehrere Einträge, die über dieselbe Story berichten. Markiere alle bis auf den qualitativ besten Eintrag pro Story als Duplikat.
 2. Erkenne unseriöse/clickbait/wahrscheinlich falsche Meldungen ("isFakeNews").
-3. Bewerte jeden Eintrag mit einem Relevanz-Score 0-100 für eine seriöse Krypto-/Finanzredaktion (Aktualität, Bedeutung, Seriosität der Quelle).
-4. Wähle den Index der wichtigsten, berichtenswertesten Story des Tages ("topStoryIndex"). Wähle keine Story, die als Duplikat oder Fake News markiert ist.
+3. Bewerte jeden Eintrag mit vier Scores von 0-100:
+   - "relevanceScore": Aktualität und inhaltliche Bedeutung für eine Krypto-/Finanzredaktion.
+   - "trustScore": Vertrauenswürdigkeit/Seriosität der Quelle.
+   - "seoScore": SEO-Potenzial (Suchinteresse, Eignung für Featured Snippets/Google Discover).
+   - "overallScore": Gesamtbewertung, ob aus dieser Meldung jetzt ein Artikel entstehen sollte (kombiniert die anderen drei Scores).
+4. Wähle den Index der wichtigsten, berichtenswertesten Story des Tages ("topStoryIndex") anhand des overallScore. Wähle keine Story, die als Duplikat oder Fake News markiert ist.
 
 Antworte mit:
 {
-  "items": [{ "index": number, "relevanceScore": number, "isDuplicate": boolean, "isFakeNews": boolean, "reason": string }],
+  "items": [{ "index": number, "relevanceScore": number, "trustScore": number, "seoScore": number, "overallScore": number, "isDuplicate": boolean, "isFakeNews": boolean, "reason": string }],
   "topStoryIndex": number | null
 }`;
 
   const result = await generateJson<{
-    items: { index: number; relevanceScore: number; isDuplicate: boolean; isFakeNews: boolean; reason?: string }[];
+    items: {
+      index: number;
+      relevanceScore: number;
+      trustScore: number;
+      seoScore: number;
+      overallScore: number;
+      isDuplicate: boolean;
+      isFakeNews: boolean;
+      reason?: string;
+    }[];
     topStoryIndex: number | null;
   }>({
     system: RANKING_SYSTEM_PROMPT,
@@ -74,13 +90,16 @@ Antworte mit:
     return {
       ...item,
       relevanceScore: score?.relevanceScore ?? 0,
+      trustScore: score?.trustScore ?? 0,
+      seoScore: score?.seoScore ?? 0,
+      overallScore: score?.overallScore ?? 0,
       isDuplicate: score?.isDuplicate ?? false,
       isFakeNews: score?.isFakeNews ?? false,
       reason: score?.reason,
     };
   });
 
-  ranked.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  ranked.sort((a, b) => b.overallScore - a.overallScore);
 
   let topStoryIndex: number | null = null;
   if (typeof result.topStoryIndex === "number" && trimmed[result.topStoryIndex]) {
