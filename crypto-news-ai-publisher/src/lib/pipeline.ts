@@ -178,6 +178,41 @@ export async function fetchAndRankNews(category: NewsCategoryKey) {
 }
 
 /**
+ * Full pipeline: a free-form topic/brief written by the editor -> research
+ * (incl. live web search if Perplexity is configured) -> article -> saved DB
+ * record.
+ */
+export async function generateArticleFromBrief(
+  category: NewsCategoryKey,
+  topic: string,
+  notes: string
+): Promise<Article> {
+  const research = await researchTopic({
+    topic,
+    category,
+    newsContext: notes || "Keine zusätzlichen Informationen angegeben.",
+  });
+
+  const sourceContext = notes
+    ? `Vorgaben/Informationen der Redaktion:\n${notes}`
+    : `Vorgaben/Informationen der Redaktion: keine - recherchiere eigenständig zum Thema.`;
+
+  const article = await writeArticle({
+    category,
+    topic,
+    sourceContext,
+    researchSummary: JSON.stringify(research, null, 2),
+  });
+
+  return saveGeneratedArticle({
+    article,
+    sourceType: "MANUAL",
+    sourceTitle: topic,
+    researchSummary: { research },
+  });
+}
+
+/**
  * Converts a stored Article DB record back into the GeneratedArticle shape
  * used by the WordPress publisher.
  */

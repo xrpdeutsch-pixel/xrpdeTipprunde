@@ -51,14 +51,24 @@ Handelsblatt, Bloomberg, WSJ, Forbes, CoinDesk und The Block erstellt und als
   YouTube-Kanal mit Speichern- und "Verbindung testen"-Buttons, daneben eine
   Statusübersicht für die übrigen, per Umgebungsvariable konfigurierten
   Funktionen.
+- **"Eigene Idee" → Artikel**: Thema + freie Notizen (Stichpunkte, Fakten,
+  Zitate, Links) eingeben - die KI recherchiert zusätzlich aktuelle
+  Informationen und schreibt daraus einen vollständigen Artikel, genau wie
+  die anderen beiden Wege.
+- **Bild-Erstellung ohne API-Kosten**: jeder generierte Bild-Prompt
+  (Featured Image, Thumbnail, X-Post, Instagram) lässt sich per Klick in den
+  kostenlosen Bing Image Creator (DALL-E) übernehmen.
 - **Redaktions-Dashboard**: Warteschlange, Entwürfe, SEO-Score, Trend-Themen,
   Top-Keywords.
 - **Automatisierung**:
-  - `/api/cron/news-check` prüft stündlich alle Kategorien; bei einer
-    wichtigen Top-Story (Gesamtbewertung ≥ 75) wird automatisch ein Artikel
-    erstellt und als WordPress-Entwurf gespeichert.
   - `/api/cron/video-check` prüft täglich den konfigurierten YouTube-Kanal
     auf neue Videos und erstellt daraus automatisch Artikel.
+  - `/api/cron/news-check` (stündliche News-Recherche pro Kategorie) ist als
+    Route vorhanden, aber standardmäßig **nicht** in `vercel.json`
+    eingetragen, da jeder automatische Check KI-Kosten verursacht - auch
+    wenn am Ende kein Artikel erstellt wird. Stattdessen: News Hunter und
+    "Eigene Idee" manuell nutzen, dann fallen Kosten nur pro tatsächlich
+    erstelltem Artikel an. Siehe Abschnitt "Kosten" unten.
 
 ## Tech Stack
 
@@ -158,19 +168,21 @@ src/
     page.tsx                  Dashboard
     news/                      News Hunter UI
     generate/                  YouTube → Artikel UI
+    generate/custom/           Eigene Idee → Artikel UI (Freitext)
     articles/                  Artikel-Liste & Editor
     settings/                  Settings-Formulare & Konfigurationsstatus
     api/
       news/                    GET  - News pro Kategorie abrufen & bewerten
       generate/youtube/         POST - Pipeline: YouTube → Artikel
       generate/news/             POST - Pipeline: News → Artikel
+      generate/custom/           POST - Pipeline: Freitext-Idee → Artikel
       articles/                  GET/PATCH/DELETE Artikel
       articles/[id]/publish/     POST - Als Entwurf/Status in WordPress speichern
       settings/wordpress/        GET/PUT - WordPress-Verbindung
       settings/wordpress/test/   POST - WordPress-Verbindung testen
       settings/youtube/          GET/PUT - YouTube-Kanal
       settings/youtube/test/     POST - YouTube-Kanal testen
-      cron/news-check/           GET  - stündliche News-Automatisierung
+      cron/news-check/           GET  - News-Recherche & Ranking (manuell/optional)
       cron/video-check/          GET  - tägliche Video-Automatisierung
   components/
     SettingsForms.tsx          Client-Formulare für WordPress & YouTube
@@ -229,8 +241,8 @@ auf [Vercel](https://vercel.com) (kostenloser Plan reicht):
    `https://xrpdetipprunde.vercel.app` (oder eine eigene Domain). Öffne dort
    `/settings`, um WordPress-Verbindung und YouTube-Kanal einzurichten.
 
-6. **Automatisierung**: `vercel.json` enthält bereits zwei Cron-Jobs:
-   - `/api/cron/news-check` - stündlich (`0 * * * *`)
+6. **Automatisierung**: `vercel.json` enthält standardmäßig **einen**
+   Cron-Job:
    - `/api/cron/video-check` - täglich um `5 11 * * *` UTC, was ca. 13:05 Uhr
      MEZ (Winterzeit) entspricht. Während der Sommerzeit (MESZ, UTC+2) läuft
      der Job entsprechend um ca. 13:05 Uhr - 1 Stunde, also ca. 12:05 Uhr
@@ -240,9 +252,37 @@ auf [Vercel](https://vercel.com) (kostenloser Plan reicht):
      `Authorization`-Header mitsenden (Vercel macht das für eigene Cron Jobs
      selbstständig); siehe
      [Vercel-Doku zu Cron Jobs](https://vercel.com/docs/cron-jobs).
-   - Hinweis: Der Hobby-Plan von Vercel begrenzt Cron Jobs auf maximal
-     täglich einmal pro Job in bestimmten Abrechnungszeiträumen - bei
-     stündlichen Cron Jobs ggf. den Pro-Plan prüfen.
+   - Der stündliche `/api/cron/news-check` ist absichtlich **nicht**
+     eingetragen (siehe Abschnitt "Kosten"). Wer ihn aktivieren möchte, fügt
+     in `vercel.json` einen weiteren Eintrag hinzu, z. B.
+     `{ "path": "/api/cron/news-check", "schedule": "0 */6 * * *" }` für alle
+     6 Stunden. Hinweis: Der Hobby-Plan von Vercel begrenzt die Frequenz von
+     Cron Jobs in bestimmten Abrechnungszeiträumen - bei sehr häufigen Cron
+     Jobs ggf. den Pro-Plan prüfen.
+
+## Kosten
+
+Hosting (Vercel Hobby-Plan) und Datenbank (Neon Free Tier) sind für dieses
+Projekt **kostenlos**. Der einzige laufende Kostenpunkt ist die
+Anthropic/OpenAI-API, abgerechnet über ein Guthaben-Konto (Pay-as-you-go,
+keine feste Monatsgebühr):
+
+- **Manuelle Artikel-Generierung** (News Hunter, "Eigene Idee", YouTube →
+  Artikel): pro Artikel ca. 0,10-0,30 € - fällt nur an, wenn du aktiv auf
+  "Artikel generieren" klickst.
+- **Täglicher Video-Check** (`/api/cron/video-check`): minimale Kosten für
+  die Prüfung selbst; nur wenn der Kanal ein neues Video hochgeladen hat,
+  entstehen die o. g. 0,10-0,30 € für den daraus erstellten Artikel.
+- **Stündlicher News-Check** (`/api/cron/news-check`, standardmäßig
+  deaktiviert): würde 5 Kategorien × 24x/Tag = 120 KI-Aufrufe/Tag verursachen
+  - auch wenn kein Artikel erstellt wird. Das kann je nach Modellpreisen auf
+  mehrere zehn bis über hundert Euro pro Monat summieren. Deshalb standardmäßig
+  aus; bei Bedarf manuell aktivieren und ggf. die Frequenz reduzieren (z. B.
+  alle 6 Stunden statt stündlich).
+
+**Fazit**: Solange du nur die manuellen Buttons + den täglichen
+Video-Check nutzt, bleiben die Kosten auf wenige Cent pro tatsächlich
+erstelltem Artikel beschränkt.
 
 ## Nicht umgesetzt (auf Anfrage erweiterbar)
 

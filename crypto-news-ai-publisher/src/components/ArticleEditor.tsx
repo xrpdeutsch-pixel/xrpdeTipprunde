@@ -271,30 +271,31 @@ export default function ArticleEditor({ article }: { article: ArticleData }) {
       </Section>
 
       <Section title="Bild-Prompts">
+        <p className="text-xs text-zinc-500">
+          Mit &quot;Bild erstellen&quot; öffnest du den kostenlosen Bing Image Creator (basiert auf
+          DALL-E) mit dem jeweiligen Prompt in der Zwischenablage - einfach im neuen Tab einfügen
+          und generieren.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextAreaField
+          <ImagePromptField
             label="Featured Image Prompt"
             value={data.featuredImagePrompt}
             onChange={(v) => update("featuredImagePrompt", v)}
-            rows={3}
           />
-          <TextAreaField
+          <ImagePromptField
             label="YouTube Thumbnail Prompt"
             value={data.thumbnailPrompt}
             onChange={(v) => update("thumbnailPrompt", v)}
-            rows={3}
           />
-          <TextAreaField
+          <ImagePromptField
             label="X Post Image Prompt"
             value={data.xPostImagePrompt}
             onChange={(v) => update("xPostImagePrompt", v)}
-            rows={3}
           />
-          <TextAreaField
+          <ImagePromptField
             label="Instagram Prompt"
             value={data.instagramImagePrompt}
             onChange={(v) => update("instagramImagePrompt", v)}
-            rows={3}
           />
         </div>
       </Section>
@@ -368,6 +369,45 @@ function TextAreaField({
         className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-xs focus:border-emerald-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900"
       />
     </label>
+  );
+}
+
+const BING_IMAGE_CREATOR_URL = "https://www.bing.com/images/create";
+
+function ImagePromptField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (value: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const openInBingImageCreator = async () => {
+    try {
+      await navigator.clipboard.writeText(value ?? "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard-Zugriff kann z.B. ohne HTTPS fehlschlagen - Bing trotzdem öffnen.
+    }
+    window.open(BING_IMAGE_CREATOR_URL, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="space-y-2">
+      <TextAreaField label={label} value={value} onChange={onChange} rows={3} />
+      <button
+        type="button"
+        onClick={openInBingImageCreator}
+        disabled={!value}
+        className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium transition-colors hover:border-emerald-400 disabled:opacity-50 dark:border-zinc-700"
+      >
+        {copied ? "Prompt kopiert - Bing öffnet sich..." : "🎨 Bild erstellen (Bing Image Creator)"}
+      </button>
+    </div>
   );
 }
 
