@@ -73,7 +73,7 @@ const GROUP_MATCHES = [
   // GRUPPE D
   {id:"D1",phase:"Gruppe",group:"D",home:"USA",away:"Paraguay",date:"13.06.2026",time:"03:00"},
   {id:"D2",phase:"Gruppe",group:"D",home:"Australien",away:"Türkei",date:"14.06.2026",time:"06:00"},
-  {id:"D3",phase:"Gruppe",group:"D",home:"USA",away:"Australien",date:"19.06.2026",time:"03:00"},
+  {id:"D3",phase:"Gruppe",group:"D",home:"USA",away:"Australien",date:"19.06.2026",time:"21:00"},
   {id:"D4",phase:"Gruppe",group:"D",home:"Türkei",away:"Paraguay",date:"20.06.2026",time:"05:00"},
   {id:"D5",phase:"Gruppe",group:"D",home:"USA",away:"Türkei",date:"26.06.2026",time:"04:00"},
   {id:"D6",phase:"Gruppe",group:"D",home:"Paraguay",away:"Australien",date:"26.06.2026",time:"04:00"},
