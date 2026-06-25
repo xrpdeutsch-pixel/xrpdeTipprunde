@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 const SUPABASE_URL = "https://ymwaobletazkijmzbtiy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_91Tw0CgJSBUdiAEyCONg8w_kZVpOFq7";
@@ -144,8 +144,6 @@ const KO_MATCHES = [
   {id:"FINAL",phase:"Finale",home:"TBD",away:"TBD",date:"19.07.2026",time:"21:00",locked:true},
 ];
 
-const ALL_MATCHES=[...GROUP_MATCHES,...KO_MATCHES];
-
 const ALL_TEAMS=[
   "Mexiko","Südafrika","Südkorea","Tschechien",
   "Kanada","Bosnien-Herzegowina","Katar","Schweiz",
@@ -225,6 +223,7 @@ export default function App(){
   const[specialTips,setSpecialTips]=useState({});
   const[specialResults,setSpecialResults]=useState({});
   const[results,setResults]=useState({});
+  const[koAssignments,setKoAssignments]=useState({});
   const[leaderboard,setLboard]=useState([]);
   const[notif,setNotif]=useState(null);
   const[loading,setLoading]=useState(false);
@@ -238,6 +237,15 @@ export default function App(){
   const loadSpecialResults=useCallback(async()=>{
     try{const rows=await sb("special_results?select=bet_id,value");const map={};(rows||[]).forEach(r=>{map[r.bet_id]=r.value;});setSpecialResults(map);}catch(e){console.error(e);}
   },[]);
+
+  const loadKoAssignments=useCallback(async()=>{
+    try{const rows=await sb("ko_assignments?select=match_id,home,away");const map={};(rows||[]).forEach(r=>{map[r.match_id]={home:r.home,away:r.away};});setKoAssignments(map);}catch(e){console.error(e);}
+  },[]);
+
+  const allMatches=useMemo(()=>GROUP_MATCHES.concat(KO_MATCHES.map(m=>{
+    const ass=koAssignments[m.id];
+    return ass&&ass.home&&ass.away?{...m,home:ass.home,away:ass.away,locked:false}:m;
+  })),[koAssignments]);
 
   const loadTips=useCallback(async(token)=>{
     try{
@@ -283,8 +291,8 @@ export default function App(){
   useEffect(()=>{
     const stored=localStorage.getItem("xrp_session");
     if(stored){try{const sess=JSON.parse(stored);setSession(sess);loadTips(sess.access_token);loadSpecialTips(sess.access_token);}catch{}}
-    loadResults();loadSpecialResults();loadLeaderboard();
-  },[loadResults,loadSpecialResults,loadLeaderboard,loadTips,loadSpecialTips]);
+    loadResults();loadSpecialResults();loadLeaderboard();loadKoAssignments();
+  },[loadResults,loadSpecialResults,loadLeaderboard,loadTips,loadSpecialTips,loadKoAssignments]);
 
   useEffect(()=>{
     if(!session)return;
@@ -319,7 +327,7 @@ export default function App(){
 
   const saveTip=async(matchId,home,away)=>{
     if(!session||home===""||away==="")return;
-    const match=ALL_MATCHES.find(m=>m.id===matchId);
+    const match=allMatches.find(m=>m.id===matchId);
     if(match&&(match.locked||results[matchId]||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
     if(tips[matchId]?.submitted){notify("⛔ Tipp ist bereits abgeschickt und gesperrt!","err");return;}
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:false,updated_at:new Date().toISOString()};
@@ -331,7 +339,7 @@ export default function App(){
 
   const submitTip=async(matchId,home,away)=>{
     if(!session||home===""||away==="")return;
-    const match=ALL_MATCHES.find(m=>m.id===matchId);
+    const match=allMatches.find(m=>m.id===matchId);
     if(match&&(match.locked||results[matchId]||isMatchLocked(match.date,match.time))){notify("⛔ Spiel hat bereits begonnen – Tipp ist gesperrt!","err");return;}
     if(tips[matchId]?.submitted)return;
     const body={user_id:session.user.id,match_id:matchId,home_score:parseInt(home),away_score:parseInt(away),submitted:true,updated_at:new Date().toISOString()};
@@ -374,6 +382,16 @@ export default function App(){
     }catch(e){console.error(e);notify("⚠️ Ergebnis konnte nicht gespeichert werden!","err");}
   };
 
+  const saveKoAssignment=async(matchId,home,away)=>{
+    if(!session||!home||!away)return;
+    const body={match_id:matchId,home,away,updated_at:new Date().toISOString()};
+    try{
+      await sbUpsert("ko_assignments","match_id",body,session.access_token);
+      setKoAssignments(k=>({...k,[matchId]:{home,away}}));
+      notify(`Paarung gesetzt: ${home} vs ${away} ✓`);
+    }catch(e){console.error(e);notify("⚠️ Paarung konnte nicht gespeichert werden!","err");}
+  };
+
   const saveSpecialResult=async(betId,value)=>{
     if(!session||!value)return;
     const body={bet_id:betId,value,updated_at:new Date().toISOString()};
@@ -410,7 +428,7 @@ export default function App(){
         {page==="home"&&<HomePage setPage={setPage} session={session}/>}
         {page==="register"&&<RegisterPage onRegister={handleRegister} setPage={setPage} loading={loading}/>}
         {page==="login"&&<LoginPage onLogin={handleLogin} setPage={setPage} loading={loading}/>}
-        {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} saveTip={saveTip} submitTip={submitTip} saveResult={saveResult} setPage={setPage}/>}
+        {page==="tips"&&<TipsPage session={session} profile={profile} tips={tips} results={results} allMatches={allMatches} saveTip={saveTip} submitTip={submitTip} saveResult={saveResult} saveKoAssignment={saveKoAssignment} setPage={setPage}/>}
         {page==="special"&&<SpecialBetsPage session={session} profile={profile} specialTips={specialTips} specialResults={specialResults} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} saveSpecialResult={saveSpecialResult} setPage={setPage}/>}
         {page==="leaderboard"&&<LeaderboardPage leaderboard={leaderboard} profile={profile} onRefresh={loadLeaderboard}/>}
       </main>
@@ -485,11 +503,11 @@ function LoginPage({onLogin,setPage,loading}){
   </div></div>);
 }
 
-function TipsPage({session,profile,tips,results,saveTip,submitTip,saveResult,setPage}){
+function TipsPage({session,profile,tips,results,allMatches,saveTip,submitTip,saveResult,saveKoAssignment,setPage}){
   const[activePhase,setActivePhase]=useState("Gruppe");
   const[activeGroup,setActiveGroup]=useState("A");
   const phases=["Gruppe","Sechzehntelfinale","Achtelfinale","Viertelfinale","Halbfinale","Spiel um Platz 3","Finale"];
-  const phaseMatches=activePhase==="Gruppe"?ALL_MATCHES.filter(m=>m.phase==="Gruppe"&&m.group===activeGroup):ALL_MATCHES.filter(m=>m.phase===activePhase);
+  const phaseMatches=activePhase==="Gruppe"?allMatches.filter(m=>m.phase==="Gruppe"&&m.group===activeGroup):allMatches.filter(m=>m.phase===activePhase);
   const tipCount=Object.keys(tips).length;
 
   if(!session)return(<div style={S.guestWrap}><div style={S.guestCard}>
@@ -513,7 +531,7 @@ function TipsPage({session,profile,tips,results,saveTip,submitTip,saveResult,set
     {activePhase!=="Gruppe"&&phaseMatches.every(m=>m.locked)&&(
       <div style={S.koHint}>🔒 Diese Runde ist noch gesperrt – die Paarungen stehen erst nach Abschluss der Vorrunde fest und werden dann von der Turnierleitung eingetragen.</div>
     )}
-    <div style={S.matchGrid}>{phaseMatches.map(m=>(<MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} onTip={(h,a)=>saveTip(m.id,h,a)} onSubmit={(h,a)=>submitTip(m.id,h,a)} onResult={(h,a)=>saveResult(m.id,h,a)} isAdmin={profile?.is_admin}/>))}</div>
+    <div style={S.matchGrid}>{phaseMatches.map(m=>(<MatchCard key={m.id} match={m} tip={tips[m.id]} result={results[m.id]} onTip={(h,a)=>saveTip(m.id,h,a)} onSubmit={(h,a)=>submitTip(m.id,h,a)} onResult={(h,a)=>saveResult(m.id,h,a)} onAssignTeams={(h,a)=>saveKoAssignment(m.id,h,a)} isAdmin={profile?.is_admin}/>))}</div>
   </div>);
 }
 
@@ -610,9 +628,11 @@ function SpecialBetCard({bet,entry,allLocked,saveSpecialTip,submitSpecialTip,spe
   </div>);
 }
 
-function MatchCard({match,tip,result,onTip,onSubmit,onResult,isAdmin}){
+function MatchCard({match,tip,result,onTip,onSubmit,onResult,onAssignTeams,isAdmin}){
   const[h,setH]=useState(tip?.home??"");const[a,setA]=useState(tip?.away??"");
   const[rh,setRh]=useState(result?.home??"");const[ra,setRa]=useState(result?.away??"");
+  const[th,setTh]=useState("");const[ta,setTa]=useState("");
+  const isTbd=match.home==="TBD"||match.away==="TBD";
   useEffect(()=>{setH(tip?.home??"");setA(tip?.away??"");},[tip]);
   useEffect(()=>{setRh(result?.home??"");setRa(result?.away??"");},[result]);
   const pts=(result&&tip&&h!==""&&a!=="")?calcPoints(tip,result):null;
@@ -653,7 +673,20 @@ function MatchCard({match,tip,result,onTip,onSubmit,onResult,isAdmin}){
     {submitted&&!result&&<div style={{fontSize:12,color:"#00d084"}}>🔒 Abgeschickt – dein Tipp ist final gespeichert und kann nicht mehr geändert werden.</div>}
     <div style={S.mBottom}>
       {result&&<span style={S.resultPill}>Ergebnis: {result.home}:{result.away}</span>}
-      {isAdmin&&!match.locked&&(<div style={S.adminRow}>
+      {isAdmin&&isTbd&&(<div style={S.adminRow}>
+        <span style={S.adminLabel}>Admin – Paarung festlegen:</span>
+        <select style={{width:160}} value={th} onChange={e=>setTh(e.target.value)}>
+          <option value="">– Team 1 –</option>
+          {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
+        </select>
+        <span style={{color:"#888"}}>vs</span>
+        <select style={{width:160}} value={ta} onChange={e=>setTa(e.target.value)}>
+          <option value="">– Team 2 –</option>
+          {ALL_TEAMS.sort().map(t=>(<option key={t} value={t}>{FLAG[t]||"🏳️"} {t}</option>))}
+        </select>
+        <button style={S.saveBtn} disabled={!th||!ta||th===ta} onClick={()=>onAssignTeams(th,ta)}>✓ Setzen</button>
+      </div>)}
+      {isAdmin&&!isTbd&&!match.locked&&(<div style={S.adminRow}>
         <span style={S.adminLabel}>Admin:</span>
         <input style={S.scoreInSm} type="number" min="0" value={rh} placeholder="–" onChange={e=>setRh(e.target.value)}/><span style={{color:"#888"}}>:</span>
         <input style={S.scoreInSm} type="number" min="0" value={ra} placeholder="–" onChange={e=>setRa(e.target.value)}/>
