@@ -185,6 +185,16 @@ const SPECIAL_BETS=[
   {id:"sb_topscorer",label:"⚽ Torschützenkönig",desc:"Wer schießt die meisten Tore?",points:3,deadline:"11.06.2026",dtime:"20:00"},
 ];
 
+// Bets in derselben Gruppe: Tipp zählt wenn das Team in EINEM der Gruppen-Ergebnisse steckt
+const SPECIAL_BET_GROUPS={
+  sb_finalist1:["sb_finalist1","sb_finalist2"],
+  sb_finalist2:["sb_finalist1","sb_finalist2"],
+  sb_sf1:["sb_sf1","sb_sf2","sb_sf3","sb_sf4"],
+  sb_sf2:["sb_sf1","sb_sf2","sb_sf3","sb_sf4"],
+  sb_sf3:["sb_sf1","sb_sf2","sb_sf3","sb_sf4"],
+  sb_sf4:["sb_sf1","sb_sf2","sb_sf3","sb_sf4"],
+};
+
 const tendency=(h,a)=>h>a?"H":a>h?"A":"D";
 const calcPoints=(tip,result)=>{
   if(!tip||!result||tip.home===""||tip.away==="")return null;
@@ -280,8 +290,10 @@ export default function App(){
         ut.forEach(t=>{const p2=calcPoints({home:t.home_score,away:t.away_score},resMap[t.match_id]);if(p2===3){pts+=3;exact++;}else if(p2===1){pts+=1;tend++;}});
         let specialPts=0;
         (allSpecialTips||[]).filter(t=>t.user_id===p.id).forEach(t=>{
-          const correct=sResMap[t.bet_id];
-          if(correct&&t.value===correct){const bet=SPECIAL_BETS.find(b=>b.id===t.bet_id);if(bet)specialPts+=bet.points;}
+          if(!t.value)return;
+          const bet=SPECIAL_BETS.find(b=>b.id===t.bet_id);if(!bet)return;
+          const groupVals=(SPECIAL_BET_GROUPS[t.bet_id]||[t.bet_id]).map(gid=>sResMap[gid]).filter(Boolean);
+          if(groupVals.includes(t.value))specialPts+=bet.points;
         });
         return{username:p.username,pts:pts+specialPts,exact,tend,tipped:ut.length,specialPts};
       }).sort((a,b)=>b.pts-a.pts||b.exact-a.exact);
@@ -590,19 +602,20 @@ function SpecialBetsPage({session,profile,specialTips,specialResults,saveSpecial
       {profile?.is_admin&&<div style={S.adminBadge}>🔐 Admin-Modus – richtige Ergebnisse eintragen</div>}
     </div>
     <div style={S.matchGrid}>{SPECIAL_BETS.map(bet=>(
-      <SpecialBetCard key={bet.id} bet={bet} entry={specialTips[bet.id]} allLocked={allLocked} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} specialResult={specialResults[bet.id]} saveSpecialResult={saveSpecialResult} isAdmin={profile?.is_admin}/>
+      <SpecialBetCard key={bet.id} bet={bet} entry={specialTips[bet.id]} allLocked={allLocked} saveSpecialTip={saveSpecialTip} submitSpecialTip={submitSpecialTip} specialResult={specialResults[bet.id]} groupResults={(SPECIAL_BET_GROUPS[bet.id]||[bet.id]).map(gid=>specialResults[gid]).filter(Boolean)} saveSpecialResult={saveSpecialResult} isAdmin={profile?.is_admin}/>
     ))}</div>
   </div>);
 }
 
-function SpecialBetCard({bet,entry,allLocked,saveSpecialTip,submitSpecialTip,specialResult,saveSpecialResult,isAdmin}){
+function SpecialBetCard({bet,entry,allLocked,saveSpecialTip,submitSpecialTip,specialResult,groupResults,saveSpecialResult,isAdmin}){
   const[adminVal,setAdminVal]=useState(specialResult||"");
   useEffect(()=>{setAdminVal(specialResult||"");},[specialResult]);
   const val=entry?.value||"";
   const submitted=!!entry?.submitted;
   const locked=allLocked||submitted;
   const canSubmit=!allLocked&&!submitted&&!!val;
-  const earned=specialResult?(val&&val===specialResult?bet.points:0):null;
+  const gr=groupResults||[];
+  const earned=gr.length>0?(val&&gr.includes(val)?bet.points:0):null;
   const earnedStyle=earned>0?{background:"rgba(0,208,132,.2)",color:"#00d084",border:"1px solid rgba(0,208,132,.4)"}:{background:"rgba(255,80,80,.15)",color:"#ff6b6b",border:"1px solid rgba(255,80,80,.3)"};
   return(<div style={S.mCard}>
     <div style={S.mMeta}>
