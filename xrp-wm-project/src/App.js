@@ -640,7 +640,7 @@ function SpecialBetCard({bet,entry,allLocked,saveSpecialTip,submitSpecialTip,spe
     {val&&!locked&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>✓ Entwurf gespeichert: {FLAG[val]} {val} <span style={{color:"#7a8fa8"}}>– zum Sperren auf „Abschicken“ klicken</span></div>}
     {submitted&&<div style={{marginTop:8,fontSize:13,color:"#00d084"}}>🔒 Final abgeschickt – kann nicht mehr geändert werden.</div>}
     {specialResult&&<div style={{marginTop:8,fontSize:13,color:"#a78bfa"}}>📌 Richtiges Ergebnis: {FLAG[specialResult]||"🏳️"} {specialResult}</div>}
-    {isAdmin&&!specialResult&&(<div style={S.adminRow}>
+    {isAdmin&&(<div style={S.adminRow}>
       <span style={S.adminLabel}>Admin – richtiges Ergebnis:</span>
       <select value={adminVal} onChange={e=>setAdminVal(e.target.value)}>
         <option value="">– auswählen –</option>
