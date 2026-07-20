@@ -736,7 +736,7 @@ function LeaderboardPage({leaderboard,profile,onRefresh}){
         </div>
         {leaderboard.map((e,i)=>{const isMe=e.username===profile?.username;return(
           <div key={e.username} style={{...S.lbRow,...(i===0?S.lbGold:i===1?S.lbSilver:i===2?S.lbBronze:{}),...(isMe?S.lbMe:{})}}>
-            <span style={S.lbRank}>{i<3?medals[i]:`${i+1}.`}</span>
+            <span style={S.lbRank}>{i<5?"👑":""}{i<3?medals[i]:`${i+1}.`}</span>
             <span style={{flex:1,fontWeight:700,color:isMe?"#00d084":"#e8edf5"}}>{e.username}{isMe&&<span style={{fontSize:11,color:"#00d084",marginLeft:6}}>(Du)</span>}</span>
             <span style={{...S.lbCol,color:"#00d084",fontSize:20,fontWeight:900}}>{e.pts}</span>
             <span style={S.lbCol}>{e.exact}</span><span style={S.lbCol}>{e.tend}</span><span style={S.lbCol}>{e.tipped}</span>
