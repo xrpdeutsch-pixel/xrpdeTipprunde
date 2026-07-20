@@ -281,7 +281,7 @@ export default function App(){
   const loadLeaderboard=useCallback(async()=>{
     try{
       const safe=p=>p.catch(e=>{console.error(e);return[];});
-      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sbAll("profiles?select=id,username"),sbAll("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),safe(sbAll("special_tips?select=user_id,bet_id,value")),safe(sb("special_results?select=bet_id,value"))]);
+      const[profiles,allTips,allResults,allSpecialTips,allSpecialResults]=await Promise.all([sbAll("profiles?select=id,username"),sbAll("tips?select=user_id,match_id,home_score,away_score"),sb("results?select=match_id,home_score,away_score"),safe(sb("special_tips?select=user_id,bet_id,value&limit=5000")),safe(sb("special_results?select=bet_id,value"))]);
       const resMap={};(allResults||[]).forEach(r=>{resMap[r.match_id]={home:r.home_score,away:r.away_score};});
       const sResMap={};(allSpecialResults||[]).forEach(r=>{sResMap[r.bet_id]=r.value;});
       const lb=(profiles||[]).map(p=>{
@@ -732,13 +732,14 @@ function LeaderboardPage({leaderboard,profile,onRefresh}){
     {leaderboard.length===0?(<div style={S.lbEmpty}>Noch keine Teilnehmer – sei der Erste! 🚀</div>):(
       <div style={S.lbList}>
         <div style={{...S.lbRow,background:"transparent",border:"none",color:"#5a6a7a",fontSize:11,letterSpacing:1,textTransform:"uppercase"}}>
-          <span style={S.lbRank}>#</span><span style={{flex:1}}>Spieler</span><span style={S.lbCol}>Punkte</span><span style={S.lbCol}>Exakt</span><span style={S.lbCol}>Tendenz</span><span style={S.lbCol}>Tipps</span>
+          <span style={S.lbRank}>#</span><span style={{flex:1}}>Spieler</span><span style={S.lbCol}>Punkte</span><span style={S.lbCol}>🌟 Sonder</span><span style={S.lbCol}>Exakt</span><span style={S.lbCol}>Tendenz</span><span style={S.lbCol}>Tipps</span>
         </div>
         {leaderboard.map((e,i)=>{const isMe=e.username===profile?.username;return(
           <div key={e.username} style={{...S.lbRow,...(i===0?S.lbGold:i===1?S.lbSilver:i===2?S.lbBronze:{}),...(isMe?S.lbMe:{})}}>
             <span style={S.lbRank}>{i<5?"👑":""}{i<3?medals[i]:`${i+1}.`}</span>
             <span style={{flex:1,fontWeight:700,color:isMe?"#00d084":"#e8edf5"}}>{e.username}{isMe&&<span style={{fontSize:11,color:"#00d084",marginLeft:6}}>(Du)</span>}</span>
             <span style={{...S.lbCol,color:"#00d084",fontSize:20,fontWeight:900}}>{e.pts}</span>
+            <span style={{...S.lbCol,color:"#a78bfa",fontWeight:700}}>{e.specialPts||0}</span>
             <span style={S.lbCol}>{e.exact}</span><span style={S.lbCol}>{e.tend}</span><span style={S.lbCol}>{e.tipped}</span>
           </div>
         );})}
