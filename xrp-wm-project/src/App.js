@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 
 const SUPABASE_URL = "https://ymwaobletazkijmzbtiy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_91Tw0CgJSBUdiAEyCONg8w_kZVpOFq7";
+const ROUND_CLOSED = true;
 
 const sb = async (path, method = "GET", body = null, token = null) => {
   const headers = { "Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${token||SUPABASE_KEY}`,"Prefer":method==="POST"?"return=representation":"" };
@@ -435,13 +436,13 @@ export default function App(){
             <div><div style={S.brandName}>XRP Deutschland</div><div style={S.brandSub}>WM 2026 Tipprunde</div></div>
           </div>
           <nav style={S.nav}>
-            {[["home","🏠"],["tips","⚽ Tippen"],["special","🌟 Sondertipps"],["leaderboard","🏆 Rangliste"]].map(([p,label])=>(
+            {[["home","🏠"],["tips",ROUND_CLOSED?"📋 Tipps":"⚽ Tippen"],["special",ROUND_CLOSED?"🌟 Sondertipps":"🌟 Sondertipps"],["leaderboard","🏆 Rangliste"]].map(([p,label])=>(
               <button key={p} style={{...S.navBtn,...(page===p?S.navBtnOn:{})}} onClick={()=>{if((p==="tips"||p==="special")&&!session){setPage("login");}else{setPage(p);}}}>
                 {label}
               </button>
             ))}
             {session?(<><span style={S.navUser}>👤 {profile?.username||"…"}</span><button style={S.navBtn} onClick={handleLogout}>Abmelden</button></>):(
-              <><button style={S.navBtn} onClick={()=>setPage("login")}>Anmelden</button><button style={{...S.navBtn,...S.navBtnGreen}} onClick={()=>setPage("register")}>Registrieren</button></>
+              <><button style={S.navBtn} onClick={()=>setPage("login")}>Anmelden</button>{!ROUND_CLOSED&&<button style={{...S.navBtn,...S.navBtnGreen}} onClick={()=>setPage("register")}>Registrieren</button>}</>
             )}
           </nav>
         </div>
@@ -472,7 +473,8 @@ function HomePage({setPage,session}){
     <div style={S.homeWrap}>
       <div style={S.homeBadge}>🏆 FIFA WM 2026 · USA · Kanada · Mexiko · 11. Juni – 19. Juli</div>
       <h1 style={S.heroH1}>XRP<br/><span style={S.heroGreen}>Deutschland</span><br/>WM 2026</h1>
-      <p style={S.heroP}>Tippe alle 72 Gruppenspiele + K.O.-Runde der WM 2026 in der größten deutschsprachigen XRP-Community!</p>
+      {ROUND_CLOSED&&<div style={{padding:"14px 28px",background:"rgba(255,80,80,.12)",border:"1px solid rgba(255,80,80,.35)",borderRadius:12,fontSize:15,color:"#ff8080",fontWeight:700,letterSpacing:1}}>🏁 Tipprunde beendet — die Ergebnisse sind final!</div>}
+      <p style={S.heroP}>{ROUND_CLOSED?"Die WM 2026 ist Geschichte! Vielen Dank für eure Tipps. Schaut euch die finale Rangliste an.":"Tippe alle 72 Gruppenspiele + K.O.-Runde der WM 2026 in der größten deutschsprachigen XRP-Community!"}</p>
       <div style={S.prizeCard}>
         <div style={S.prizeHeadRow}><span style={S.prizeIcon}>🎁</span><span style={S.prizeHead}>Gewinne für Platz 1–3!</span></div>
         <p style={S.prizeBody}>Die besten drei Tipper erhalten <strong>coole Gewinne!</strong> Genauere Informationen über unsere Kanäle.</p>
@@ -489,7 +491,9 @@ function HomePage({setPage,session}){
           ))}
         </div>
       </div>
-      {session?(<div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("tips")}>Zu meinen Tipps →</button><button style={S.ctaGhost} onClick={()=>setPage("special")}>🌟 Sondertipps</button></div>):(
+      {ROUND_CLOSED?(
+        <div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("leaderboard")}>🏆 Zur Rangliste →</button>{session&&<button style={S.ctaGhost} onClick={()=>setPage("tips")}>📋 Meine Tipps ansehen</button>}</div>
+      ):session?(<div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("tips")}>Zu meinen Tipps →</button><button style={S.ctaGhost} onClick={()=>setPage("special")}>🌟 Sondertipps</button></div>):(
         <div style={S.ctaRow}><button style={S.ctaGreen} onClick={()=>setPage("register")}>Jetzt mitmachen →</button><button style={S.ctaGhost} onClick={()=>setPage("login")}>Bereits registriert</button></div>
       )}
     </div>
