@@ -424,6 +424,19 @@ export default function App(){
     }catch(e){console.error(e);notify("Fehler beim Speichern des Sondertipp-Ergebnisses!","err");}
   };
 
+  if(ROUND_CLOSED)return(
+    <div style={{minHeight:"100vh",background:"#04080f",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24,fontFamily:"'Barlow',sans-serif",color:"#dde5f0"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700;900&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <svg width="64" height="64" viewBox="0 0 100 100" fill="none" style={{marginBottom:24}}><circle cx="50" cy="50" r="47" stroke="white" strokeWidth="3.5"/><circle cx="50" cy="50" r="40" stroke="white" strokeWidth="1.5"/><path d="M18 20 L50 52 L82 20" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18 80 L50 48 L82 80" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,letterSpacing:4,marginBottom:8}}>XRP Deutschland</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:3,color:"#00d084",marginBottom:32}}>WM 2026 Tipprunde</div>
+      <div style={{fontSize:64,marginBottom:16}}>🏁</div>
+      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,letterSpacing:2,marginBottom:12}}>Tipprunde beendet</div>
+      <p style={{fontSize:16,color:"#7a8fa8",maxWidth:420,lineHeight:1.7,marginBottom:32}}>Die WM 2026 ist Geschichte!<br/>Vielen Dank an alle Teilnehmer.<br/>Die Gewinner werden über unsere Kanäle bekannt gegeben.</p>
+      <a href="https://www.youtube.com/@xrpdeutschland" target="_blank" rel="noreferrer" style={{padding:"12px 28px",background:"#00d084",color:"#000",borderRadius:8,fontWeight:800,fontSize:14,textDecoration:"none",letterSpacing:1}}>→ XRP Deutschland YouTube</a>
+    </div>
+  );
+
   return(
     <div style={S.root}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700;900&display=swap');*{box-sizing:border-box;margin:0;padding:0}input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}input[type=number]{-moz-appearance:textfield}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0f1e}::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:3px}a:hover{opacity:.8}button:hover{filter:brightness(1.1)}select{background:#111;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:8px 12px;font-size:14px;outline:none;width:100%}`}</style>
